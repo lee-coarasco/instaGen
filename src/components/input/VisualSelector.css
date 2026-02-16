@@ -1,0 +1,133 @@
+.visual-selector-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.visual-option {
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    background: var(--glass-bg);
+    overflow: hidden;
+    position: relative;
+    border: 1px solid var(--glass-border);
+}
+
+.visual-option:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-primary);
+}
+
+.visual-option.selected {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2);
+}
+
+.preview-box {
+    height: 90px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.mini-label {
+    opacity: 0.8;
+    font-size: 1.4rem;
+    font-weight: bold;
+}
+
+.option-info {
+    padding: 0.75rem;
+    text-align: center;
+}
+
+.option-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    display: block;
+}
+
+/* Specific Styles */
+.preview-minimal {
+    background: #fcfcfc;
+    color: #111;
+    font-family: 'Inter', sans-serif;
+}
+.preview-minimal .mini-label { letter-spacing: -0.5px; }
+
+.preview-illustrative {
+    background: #fff8eb;
+    color: #444;
+    background-image: 
+        radial-gradient(#ffd6a5 2px, transparent 2px),
+        radial-gradient(#fd9cce 2px, transparent 2px);
+    background-size: 20px 20px;
+    background-position: 0 0, 10px 10px;
+}
+.preview-illustrative .mini-label { font-family: 'Comic Sans MS', cursive, sans-serif; transform: rotate(-5deg); }
+
+
+.preview-3d {
+    background: radial-gradient(circle at 30% 30%, #ffffff, #e6e6e6);
+    color: #555;
+}
+.preview-3d .mini-label {
+    text-shadow: 2px 2px 0px #ddd, 4px 4px 5px rgba(0,0,0,0.1);
+    transform: perspective(100px) rotateX(10deg);
+}
+
+.preview-futuristic {
+    background: #09090b;
+    color: #00ff94;
+    border-bottom: 2px solid #00ff94;
+}
+.preview-futuristic .mini-label {
+    text-shadow: 0 0 8px rgba(0,255,148,0.6);
+    font-family: 'Courier New', monospace;
+    letter-spacing: 2px;
+}
+
+.preview-corporate {
+    background: #f0f4f8;
+    color: #0f172a;
+    border-left: 4px solid #3b82f6;
+}
+.preview-corporate .mini-label { font-family: 'Arial', sans-serif; font-weight: 700; }
+
+.preview-artistic {
+    background: conic-gradient(from 45deg, #ff9a9e, #fad0c4, #fad0c4, #a18cd1, #fbc2eb);
+    color: white;
+}
+.preview-artistic .mini-label { 
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    font-style: italic;
+    font-family: serif;
+}
+
+
+.selected-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    background: var(--color-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 2;
+}
+
+@media (max-width: 768px) {
+    .visual-selector-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    }
+}

@@ -1,0 +1,242 @@
+/* FULL SCREEN MODAL OVERLAY */
+.auth-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    width: 100vw;
+    height: 100vh;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(10, 10, 20, 0.6);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+
+    z-index: 999999;
+
+    padding: 24px;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+
+    padding: 40px;
+    border-radius: 24px;
+
+    background: rgba(20, 20, 40, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+
+    position: relative;
+}
+
+.auth-card {
+    position: relative;
+}
+
+/* CLOSE BUTTON */
+.auth-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    color: var(--color-text-secondary);
+
+    transition: all 0.3s ease;
+}
+
+.auth-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--color-primary);
+    transform: rotate(90deg);
+}
+
+
+.auth-header {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+}
+
+.auth-header h2 {
+    font-size: 1.75rem;
+    margin-bottom: var(--space-xs);
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.auth-header p {
+    color: var(--color-text-tertiary);
+    font-size: 0.875rem;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.form-group label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin-left: 4px;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-wrapper svg {
+    position: absolute;
+    left: 12px;
+    color: var(--color-text-tertiary);
+    transition: color 0.3s ease;
+}
+
+.input-wrapper input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    padding: 12px 12px 12px 40px;
+    border-radius: 12px;
+    color: var(--color-text-primary);
+    font-size: 0.9375rem;
+    transition: all 0.3s ease;
+}
+
+.input-wrapper input:focus {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.1);
+}
+
+.input-wrapper input:focus+svg {
+    color: var(--color-primary);
+}
+
+.auth-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    text-align: center;
+}
+
+.auth-submit {
+    margin-top: var(--space-md);
+    padding: 14px;
+    font-size: 1rem;
+}
+
+.auth-footer {
+    margin-top: var(--space-xl);
+    text-align: center;
+}
+
+.auth-footer p {
+    font-size: 0.875rem;
+    color: var(--color-text-tertiary);
+}
+
+.toggle-btn {
+    background: none;
+    border: none;
+    color: var(--color-primary-light);
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 4px;
+    transition: color 0.3s ease;
+}
+
+.toggle-btn:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.auth-modal-overlay {
+    position: fixed;
+    inset: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(10, 10, 20, 0.6);
+    backdrop-filter: blur(14px);
+
+    z-index: 9999;
+}
+
+.auth-modal-content {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    padding: 20px;
+}
+
+.auth-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    color: white;
+}
