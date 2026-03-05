@@ -30,10 +30,19 @@ function IntentPreview({ onNext, onBack }) {
                 referenceImage: project.referenceImage,
                 brandName: project.brandName,
                 brandingPlacement: project.brandingPlacement,
+                slideCount: project.slideCount,
+                slideCountMethod: project.slideCountMethod,
             })
 
             setIntent(result)
-            updateProject({ intent: result })
+
+            // Sync suggested slide count to project root if in auto mode
+            const updates = { intent: result }
+            if (project.slideCountMethod === 'auto' && result.suggested_slide_count) {
+                updates.slideCount = result.suggested_slide_count
+            }
+
+            updateProject(updates)
         } catch (err) {
             setError(err.message)
             console.error('Intent analysis error:', err)
@@ -50,8 +59,9 @@ function IntentPreview({ onNext, onBack }) {
     }
 
     const handleRefine = async () => {
-        // TODO: Implement refinement with user feedback
-        console.log('Refine intent')
+        // Clear current intent and re-analyze with latest project details
+        setIntent(null)
+        analyzeIntent()
     }
 
     return (

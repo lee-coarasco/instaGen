@@ -9,6 +9,12 @@ function HomePage() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [showAuth, setShowAuth] = useState(false);
+    const [authMode, setAuthMode] = useState('login');
+
+    const handleGetStarted = () => {
+        setAuthMode('register');
+        setShowAuth(true);
+    };
 
     const handleAuthSuccess = () => {
         setShowAuth(false);
@@ -44,7 +50,7 @@ function HomePage() {
                                     <ArrowRight size={20} />
                                 </Link>
                             ) : (
-                                <button className="btn btn-primary btn-large" onClick={() => setShowAuth(true)}>
+                                <button className="btn btn-primary btn-large" onClick={handleGetStarted}>
                                     <Sparkles size={20} />
                                     Get Started Free
                                     <ArrowRight size={20} />
@@ -211,12 +217,14 @@ function HomePage() {
 
             {/* Auth Modal */}
             {showAuth && (
-
-                <Auth
-                    onClose={() => setShowAuth(false)}
-                    onSuccess={() => setShowAuth(false)}
-                />
-
+                <div className="auth-modal-overlay" onClick={() => setShowAuth(false)}>
+                    <div className="auth-modal-content" onClick={(e) => e.stopPropagation()}>
+                        <button className="auth-close-btn" onClick={() => setShowAuth(false)}>
+                            <X size={20} />
+                        </button>
+                        <Auth mode={authMode} onSuccess={handleAuthSuccess} />
+                    </div>
+                </div>
             )}
         </div>
     )

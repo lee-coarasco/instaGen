@@ -8,7 +8,8 @@ import './Auth.css';
 
 export default function Auth({ mode = 'login', onToggle, onSuccess, onClose }) {
     const { login, register } = useAuth();
-    const [isLogin, setIsLogin] = useState(mode === 'login');
+    // 'login' mode = login form, 'register' mode = signup form
+    const [isLogin, setIsLogin] = useState(mode !== 'register');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [formData, setFormData] = useState({

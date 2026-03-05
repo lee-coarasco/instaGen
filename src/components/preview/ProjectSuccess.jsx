@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useProject } from '@contexts/ProjectContext'
 import {
     CheckCircle2,
@@ -6,14 +6,15 @@ import {
     RefreshCw,
     LayoutGrid,
     History,
-    Sparkles
+    Sparkles,
+    Loader
 } from 'lucide-react'
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 import InstagramModal from '@components/common/InstagramModal'
 import './ProjectSuccess.css'
 
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
     ChevronDown,
     ChevronUp,
@@ -25,12 +26,32 @@ import {
 } from 'lucide-react'
 
 export default function ProjectSuccess() {
-    const { project, resetProject } = useProject()
+    const { project, resetProject, fetchProjectById } = useProject()
     const navigate = useNavigate()
+    const { id: urlId } = useParams()
+    const [loading, setLoading] = useState(!!urlId && (!project.id || project.id !== urlId))
+
+    // Handle initial hydration if arriving from a direct link or dashboard
+    useEffect(() => {
+        if (urlId && (!project.id || project.id !== urlId)) {
+            setLoading(true)
+            fetchProjectById(urlId).finally(() => setLoading(false))
+        } else {
+            setLoading(false)
+        }
+    }, [urlId, project.id, fetchProjectById])
+
+    // Ensure we have images (might be in stages.finalImages if root not synced)
+    const finalImages = project.finalImages?.length > 0
+        ? project.finalImages
+        : project.stages?.finalImages || []
+
     const [showPreview, setShowPreview] = useState(false)
     const [showDetailedDetails, setShowDetailedDetails] = useState(false)
     const [activeTab, setActiveTab] = useState('intent')
     const [copiedId, setCopiedId] = useState(null)
+    const [expandedHistory, setExpandedHistory] = useState(null)
+    const [lightboxImage, setLightboxImage] = useState(null)
 
     const handleCopy = (text, id) => {
         navigator.clipboard.writeText(text)
@@ -47,7 +68,7 @@ export default function ProjectSuccess() {
         const zip = new JSZip()
         const folder = zip.folder(`${project.brandName || 'instaGen'}-carousel`)
 
-        const downloadPromises = project.finalImages.map(async (img, index) => {
+        const downloadPromises = finalImages.map(async (img, index) => {
             const response = await fetch(img.url)
             const blob = await response.blob()
             folder.file(`slide-${index + 1}.png`, blob)
@@ -56,6 +77,16 @@ export default function ProjectSuccess() {
         await Promise.all(downloadPromises)
         const content = await zip.generateAsync({ type: 'blob' })
         saveAs(content, `${project.brandName || 'instaGen'}-carousel.zip`)
+    }
+
+    if (loading) {
+        return (
+            <div className="project-success loading-state">
+                <Loader className="spin" size={48} />
+                <h3>Hydrating Visuals...</h3>
+                <p>Retrieving all slides and project data.</p>
+            </div>
+        )
     }
 
     return (
@@ -68,12 +99,12 @@ export default function ProjectSuccess() {
 
             <div className="success-stats-grid">
                 <div className="stat-card">
-                    <span className="stat-label">Slides</span>
-                    <span className="stat-value">{project.content?.slides?.length || 0}</span>
+                    <span className="stat-label">Project</span>
+                    <span className="stat-value">{project.title || project.userIdea || 'Untitled'}</span>
                 </div>
                 <div className="stat-card">
-                    <span className="stat-label">Format</span>
-                    <span className="stat-value">1:1 Square</span>
+                    <span className="stat-label">Slides</span>
+                    <span className="stat-value">{project.content?.slides?.length || project.finalImages?.length || project.stages?.finalImages?.length || 0}</span>
                 </div>
                 <div className="stat-card">
                     <span className="stat-label">Niche</span>
@@ -108,22 +139,22 @@ export default function ProjectSuccess() {
                 <div className="specs-grid">
                     <div className="spec-item">
                         <span className="spec-label">Style Language:</span>
-                        <code>{project.intent?.visual_language || 'Professional'}</code>
+                        <code>{project.intent?.visual_language || project.visualPlan?.illustration_style?.type || 'Professional'}</code>
                     </div>
                     <div className="spec-item">
                         <span className="spec-label">Tone:</span>
-                        <code>{project.intent?.tone || 'Engaging'}</code>
+                        <code>{project.intent?.tone || project.visualPlan?.illustration_style?.mood || 'Engaging'}</code>
                     </div>
                     <div className="spec-item">
                         <span className="spec-label">Primary Color:</span>
                         <div className="spec-color-row">
                             <div className="color-dot" style={{ backgroundColor: project.visualPlan?.design_tokens?.colors?.primary }}></div>
-                            <code>{project.visualPlan?.design_tokens?.colors?.primary}</code>
+                            <code>{project.visualPlan?.design_tokens?.colors?.primary || 'N/A'}</code>
                         </div>
                     </div>
                     <div className="spec-item">
-                        <span className="spec-label">Heading Font:</span>
-                        <code>{project.visualPlan?.design_tokens?.typography?.heading_font?.split(',')[0]}</code>
+                        <span className="spec-label">Branding:</span>
+                        <code>{project.brandName || 'instaGen'} ({project.brandingPlacement || 'Top Right'})</code>
                     </div>
                 </div>
             </div>
@@ -134,20 +165,86 @@ export default function ProjectSuccess() {
                     <div className="specs-grid">
                         <div className="spec-item">
                             <span className="spec-label">Total Tokens:</span>
-                            <code>{project.usage.totalTokens.toLocaleString()}</code>
+                            <code>{project.usage.totalTokens?.toLocaleString() || 0}</code>
                         </div>
                         <div className="spec-item">
                             <span className="spec-label">Estimated Cost:</span>
-                            <code className="cost-value">${project.usage.estimatedCost.toFixed(4)} USD</code>
+                            <code className="cost-value">${project.usage.estimatedCost?.toFixed(4) || '0.000'} USD</code>
                         </div>
                         <div className="spec-item">
                             <span className="spec-label">Input / Output:</span>
-                            <code>{project.usage.inputTokens.toLocaleString()} / {project.usage.outputTokens.toLocaleString()}</code>
+                            <code>{project.usage.inputTokens?.toLocaleString() || 0} / {project.usage.outputTokens?.toLocaleString() || 0}</code>
                         </div>
                         <div className="spec-item">
                             <span className="spec-label">AI Model:</span>
                             <code>Gemini 1.5 Flash</code>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Final Visuals Section with History */}
+            <div className="final-visuals-section">
+                <div className="section-header-mini">
+                    <Sparkles size={20} />
+                    <h3>Final Visuals & History</h3>
+                </div>
+
+                <div className="visuals-grid-main">
+                    {finalImages.map((img, idx) => (
+                        <div key={idx} className={`final-visual-card glass ${expandedHistory === idx ? 'expanded' : ''}`}>
+                            <div className="visual-preview-container">
+                                <img src={img.url} alt={`Slide ${idx + 1}`} onClick={() => setLightboxImage(img.url)} />
+                                <div className="slide-badge">Slide {idx + 1}</div>
+
+                                {img.generationHistory?.length > 0 && (
+                                    <button
+                                        className={`history-toggle-btn ${expandedHistory === idx ? 'active' : ''}`}
+                                        onClick={() => setExpandedHistory(expandedHistory === idx ? null : idx)}
+                                        title="View Version History"
+                                    >
+                                        <History size={16} />
+                                        <span>{img.generationHistory.length} versions</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            {expandedHistory === idx && img.generationHistory?.length > 0 && (
+                                <div className="history-reveal-panel animated-fade-in">
+                                    <div className="history-header">
+                                        <span>Version History</span>
+                                    </div>
+                                    <div className="history-strip-mini">
+                                        {/* Current version as first item */}
+                                        <div className="history-item-mini active">
+                                            <img src={img.url} alt="Current" />
+                                            <span className="version-tag">Current</span>
+                                        </div>
+                                        {img.generationHistory.map((h, hIdx) => (
+                                            <div
+                                                key={hIdx}
+                                                className="history-item-mini"
+                                                onClick={() => setLightboxImage(h.url)}
+                                            >
+                                                <img src={h.url} alt={`v${hIdx}`} />
+                                                <span className="version-tag">v{img.generationHistory.length - hIdx}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <p className="history-hint-text">Click any version to preview full-res.</p>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Lightbox for History/Image Preview */}
+            {lightboxImage && (
+                <div className="success-lightbox-overlay" onClick={() => setLightboxImage(null)}>
+                    <div className="success-lightbox-content animated-scale-in">
+                        <img src={lightboxImage} alt="Preview" />
+                        <button className="close-lightbox" onClick={() => setLightboxImage(null)}>✕</button>
                     </div>
                 </div>
             )}
@@ -255,21 +352,29 @@ export default function ProjectSuccess() {
                             {activeTab === 'intent' && (
                                 <div className="panel-content intent-panel">
                                     <div className="detail-row">
-                                        <label>Core Strategy:</label>
-                                        <div className="text-box">{project.intent?.strategy || 'N/A'}</div>
+                                        <label>Primary Goal:</label>
+                                        <div className="text-box">{project.intent?.goal || project.intent?.strategy || 'N/A'}</div>
                                     </div>
                                     <div className="detail-row">
                                         <label>Target Audience:</label>
-                                        <div className="text-box">{project.intent?.target_audience || 'N/A'}</div>
+                                        <div className="text-box">{project.intent?.audience || project.intent?.target_audience || 'N/A'}</div>
                                     </div>
                                     <div className="detail-row">
-                                        <label>Key Takeaway:</label>
-                                        <div className="text-box">{project.intent?.key_takeaway || 'N/A'}</div>
-                                    </div>
-                                    <div className="detail-row">
-                                        <label>Tone & Style:</label>
+                                        <label>Key Messages:</label>
                                         <div className="text-box">
-                                            {project.intent?.tone} - {project.intent?.visual_language}
+                                            {project.intent?.key_messages?.length > 0
+                                                ? <ul style={{ paddingLeft: '1.2rem', margin: '0.5rem 0' }}>
+                                                    {project.intent.key_messages.map((m, i) => <li key={i}>{m}</li>)}
+                                                </ul>
+                                                : (project.intent?.key_takeaway || 'N/A')}
+                                        </div>
+                                    </div>
+                                    <div className="detail-row">
+                                        <label>Tone & Visual Style:</label>
+                                        <div className="text-box">
+                                            <strong>Tone:</strong> {project.intent?.tone || 'N/A'}<br />
+                                            <strong>Visual Language:</strong> {project.intent?.visual_language || 'N/A'}<br />
+                                            {project.intent?.emotions && <strong>Emotions:</strong>} {project.intent?.emotions?.join(', ')}
                                         </div>
                                     </div>
                                 </div>
@@ -324,6 +429,7 @@ export default function ProjectSuccess() {
                                                         </div>
                                                     </div>
                                                 ))}
+                                                {Object.keys(project.visualPlan?.design_tokens?.colors || {}).length === 0 && <span className="text-muted">N/A</span>}
                                             </div>
                                         </div>
                                         <div className="token-card">
@@ -331,17 +437,22 @@ export default function ProjectSuccess() {
                                             <div className="token-list">
                                                 <div className="token-item">
                                                     <span>Heading</span>
-                                                    <code>{project.visualPlan?.design_tokens?.typography?.heading_font}</code>
+                                                    <code>{project.visualPlan?.design_tokens?.typography?.heading_font || 'N/A'}</code>
                                                 </div>
                                                 <div className="token-item">
                                                     <span>Body</span>
-                                                    <code>{project.visualPlan?.design_tokens?.typography?.body_font}</code>
+                                                    <code>{project.visualPlan?.design_tokens?.typography?.body_font || 'N/A'}</code>
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="token-card full">
                                             <h4>Layout Strategy</h4>
-                                            <p className="token-desc">{project.visualPlan?.layout_strategy}</p>
+                                            <p className="token-desc">
+                                                {project.visualPlan?.layout_strategy ||
+                                                    project.visualPlan?.overall_mood ||
+                                                    project.visualPlan?.concept ||
+                                                    'N/A'}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -375,6 +486,7 @@ export default function ProjectSuccess() {
                                             </div>
                                         </div>
                                     ))}
+                                    {(!project.finalImages || project.finalImages.length === 0) && <div className="text-center p-4">No images generated yet.</div>}
                                 </div>
                             )}
                         </div>
@@ -393,7 +505,7 @@ export default function ProjectSuccess() {
             <InstagramModal
                 isOpen={showPreview}
                 onClose={() => setShowPreview(false)}
-                images={project.finalImages}
+                images={finalImages}
                 brandName={project.brandName}
             />
         </div>

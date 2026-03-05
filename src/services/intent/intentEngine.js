@@ -21,7 +21,7 @@ export class IntentEngine {
             referenceStyle = await this.analyzeVisualReference(referenceImage)
         }
 
-        const prompt = this.buildIntentPrompt(userInput, nicheProfile, postType, referenceStyle)
+        const prompt = this.buildIntentPrompt(userInput, nicheProfile, postType, referenceStyle, context)
 
         try {
             const intent = await geminiClient.generateJSON(prompt)
@@ -90,7 +90,7 @@ Respond ONLY with the JSON object.`
     /**
      * Build prompt for intent understanding
      */
-    buildIntentPrompt(userInput, nicheProfile, postType, referenceStyle = null) {
+    buildIntentPrompt(userInput, nicheProfile, postType, referenceStyle = null, context = {}) {
         return `You are an expert creative director analyzing a request for Instagram content.
 
 USER INPUT:
@@ -136,8 +136,10 @@ OUTPUT FORMAT (JSON):
   "emotions": ["array of emotions to evoke"],
   "key_messages": ["array of 3-5 key messages to communicate"],
   "complexity": "string - 'Simple', 'Moderate', or 'Complex'",
-  "suggested_slide_count": number - recommended number of slides (if carousel)
+  "suggested_slide_count": ${context.slideCountMethod === 'manual' ? context.slideCount : 'number - recommended number of slides (if carousel)'}
 }
+
+${context.slideCountMethod === 'manual' ? `IMPORTANT: The user has requested EXACTLY ${context.slideCount} slides. Your suggestions and key messages must be optimized for this specific length.` : ''}
 
 Respond ONLY with the JSON object.`
     }

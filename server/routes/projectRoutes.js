@@ -4,7 +4,8 @@ import {
     getProject,
     saveProject,
     deleteProject,
-    getUserStats
+    getUserStats,
+    getGallery
 } from '../controllers/projectController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -16,6 +17,7 @@ router.route('/')
     .get(getProjects)
     .post(saveProject);
 
+router.get('/gallery', getGallery);
 router.get('/stats', getUserStats);
 
 router.route('/:id')

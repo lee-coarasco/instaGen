@@ -302,3 +302,87 @@
 .remove-reference:hover {
     background: var(--color-error);
 }
+
+/* === SLIDE COUNT STRATEGY === */
+.form-section.full-width {
+    grid-column: 1 / -1;
+}
+
+.section-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-md);
+    flex-wrap: wrap;
+    gap: var(--space-md);
+}
+
+.strategy-toggle {
+    display: flex;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+}
+
+.strategy-btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: none;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-tertiary);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: var(--font-family-primary);
+}
+
+.strategy-btn.active {
+    background: var(--color-primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.3);
+}
+
+.slide-count-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.count-hint,
+.auto-count-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+    margin-top: 8px;
+    font-style: italic;
+}
+
+.auto-count-hint {
+    background: rgba(var(--color-primary-rgb), 0.05);
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px dashed rgba(var(--color-primary-rgb), 0.2);
+    color: var(--color-primary-light);
+    font-style: normal;
+}
+
+.animated-fade {
+    animation: fadeInSlide 0.3s ease-out;
+}
+
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

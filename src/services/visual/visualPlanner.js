@@ -244,44 +244,44 @@ A single wide image showing all slides side-by-side as a preview storyboard.
 This allows the user to see the entire carousel flow and visual consistency before final generation.`
   }
 
-  /**
-   * Generate individual slide prompt
-   */
   generateSlidePrompt(slideIndex, visualPlan, content) {
     const slide = content.slides[slideIndex]
     const slideVisual = visualPlan.slide_visuals[slideIndex]
     const { design_tokens, illustration_style, consistency_guidelines } = visualPlan
 
-    return `Create a square Instagram post (1080x1080px).
+    return `Create a high-quality square Instagram post (1080x1080px).
 
-TEXT CONTENT (Render ONLY this text verbatim):
+CRITICAL: ONLY render the text provided in the "TEXT TO RENDER" section. Do NOT render any other words, character counts, technical specs, or labels.
+
+TEXT TO RENDER (EVERYTHING ELSE IS STRICTLY FORBIDDEN):
 - Heading: "${slide.heading}"
 - Subtext: "${slide.subtext}"
-${visualPlan.brandName ? `- Brand Name: "${visualPlan.brandName}" (Place at ${visualPlan.brandingPlacement})` : ''}
+${visualPlan.brandName ? `- Brand Name: "${visualPlan.brandName}"` : ''}
 
-NEGATIVE PROMPT (STRICTLY FORBIDDEN):
-- Do NOT render any other text, numbers, dimensions, or code.
-- Do NOT render technical specs like "60px", "Inter", "HSL", "#FFF", "Padding".
-- Do NOT render placeholder text or UI elements.
-- Do NOT render the background color code as text.
+STRICT NEGATIVE RULES (FORBIDDEN):
+- NEVER render technical metadata like "HSL", "Inter", "size", "px", "60px", "bold", "placement", "18l", "0,0%", "40".
+- NEVER render color codes (e.g., #FFFFFF, rgb, hsl).
+- NEVER render font details or CSS properties as text.
+- NEVER render prompt keywords or instructions as text.
+- NEVER render slide numbers, dimensions, or percentages.
+- If it's not in the "TEXT TO RENDER" list, it is STICKTLY PROHIBITED from appearing in the image.
 
-VISUAL STYLE INSTRUCTIONS:
-- Colors: Use the defined palette. Primary: ${design_tokens.colors.primary}. Secondary: ${design_tokens.colors.secondary}. Background: ${design_tokens.colors.background}.
-- Fonts: Use a modern, bold font for headings and a clean, readable font for body text. Ensure high contrast and readability.
-- Layout: Maintain generous whitespace and padding around the edges. Keep the design clean and uncluttered.
+VISUAL STYLE & BRANDING INSTRUCTIONS:
+- This is slide ${slideIndex + 1} of a series. It must match the visual identity of all other slides perfectly.
+- Branding placement: Place the brand name "${visualPlan.brandName}" at the ${visualPlan.brandingPlacement}.
+- Branding style: Use the color ${design_tokens.branding?.color || design_tokens.colors.primary} and a ${design_tokens.branding?.size || 'small'} font weight.
+- Color Palette: Background: ${design_tokens.colors.background}, Primary: ${design_tokens.colors.primary}, Accent: ${design_tokens.colors.accent}.
 - Composition: ${visualPlan.layout_system.composition}.
-- Style: ${illustration_style.type} exhibiting a ${illustration_style.mood} mood.
+- Illustration Style: ${illustration_style.type} (${illustration_style.mood} mood).
 
 IMAGE DESCRIPTION:
 ${slideVisual.visual_description}
-Focus on: ${slideVisual.focal_point}
+Focal point: ${slideVisual.focal_point}
 Supporting elements: ${slideVisual.supporting_elements.join(', ')}
-Key color emphasis: ${slideVisual.color_emphasis}
 
-CONSISTENCY GUIDELINES:
+CONSISTENCY ENFORCEMENT:
 ${consistency_guidelines.character_references}
 ${consistency_guidelines.style_references}
-${consistency_guidelines.composition_rules}
 `
   }
 

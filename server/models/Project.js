@@ -8,6 +8,7 @@ const projectSchema = new mongoose.Schema({
     },
     niche: String,
     postType: String,
+    title: String,
     visualStyle: String,
     platformFormat: String,
     userIdea: String,
@@ -25,6 +26,14 @@ const projectSchema = new mongoose.Schema({
                 url: String,
                 prompt: String,
                 slideIndex: Number,
+                status: String,
+                generationHistory: [
+                    {
+                        url: String,
+                        prompt: String,
+                        generatedAt: { type: Date, default: Date.now },
+                    }
+                ]
             },
         ],
     },
@@ -43,6 +52,13 @@ const projectSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
+    updatedAt: {
+        type: Date,
+        default: Date.now,
+    },
 });
+
+// Compound index for fast dashboard sorting without memory limit crashes
+projectSchema.index({ userId: 1, createdAt: -1 });
 
 export default mongoose.model('Project', projectSchema);

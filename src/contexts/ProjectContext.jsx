@@ -41,6 +41,12 @@ export const ProjectProvider = ({ children }) => {
         }
     })
 
+    // Cache State
+    const [projectCache, setProjectCache] = useState(null);
+    const [galleryCache, setGalleryCache] = useState(null);
+    const [statsCache, setStatsCache] = useState(null);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
+
     const updateProject = useCallback((updates) => {
         setProject((prev) => ({
             ...prev,
@@ -107,12 +113,95 @@ export const ProjectProvider = ({ children }) => {
         }))
     }, [])
 
+    const updatePipelineStage = useCallback((stage, data) => {
+        setProject((prev) => ({
+            ...prev,
+            currentStage: stage,
+            ...data
+        }))
+    }, [])
+
     const setStatus = useCallback((status) => {
         setProject((prev) => ({
             ...prev,
             status,
         }))
     }, [])
+
+    // --- CACHED API CALLS ---
+
+    const fetchProjects = useCallback(async (forceRefresh = false, page = 1, limit = 20) => {
+        if (!forceRefresh && projectCache && page === 1) {
+            return { data: projectCache, pagination: { page: 1, pages: 1 } }; // Simplified pagination for cache
+        }
+        try {
+            const res = await axios.get(`${API_URL}/projects`, { params: { page, limit } });
+            const data = res.data.data;
+            if (page === 1) {
+                setProjectCache(data);
+            }
+            return { data, pagination: res.data.pagination };
+        } catch (err) {
+            console.error('Fetch projects error:', err);
+            return { data: [], pagination: {} };
+        }
+    }, [projectCache]);
+
+    const fetchGallery = useCallback(async (forceRefresh = false, page = 1, limit = 24) => {
+        if (!forceRefresh && galleryCache && page === 1) {
+            return { data: galleryCache, pagination: { page: 1, pages: 1 } };
+        }
+        try {
+            const res = await axios.get(`${API_URL}/projects/gallery`, { params: { page, limit } });
+            const data = res.data.data;
+            if (page === 1) {
+                setGalleryCache(data);
+            }
+            return { data, pagination: res.data.pagination };
+        } catch (err) {
+            console.error('Fetch gallery error:', err);
+            return { data: [], pagination: {} };
+        }
+    }, [galleryCache]);
+
+    const fetchStats = useCallback(async (forceRefresh = false) => {
+        if (!forceRefresh && statsCache) return statsCache;
+        try {
+            const res = await axios.get(`${API_URL}/projects/stats`);
+            setStatsCache(res.data.data);
+            return res.data.data;
+        } catch (err) {
+            console.error('Fetch stats error:', err);
+            return null;
+        }
+    }, [statsCache]);
+
+    const fetchProjectById = useCallback(async (id) => {
+        try {
+            const res = await axios.get(`${API_URL}/projects/${id}`);
+            const p = res.data.data || res.data;
+            if (p) {
+                // Hydrate project context with saved data
+                const hydratedProject = {
+                    ...p,
+                    id: p._id,
+                    ...p.stages,
+                    slides: p.stages?.content?.slides || p.slides || []
+                };
+                setProject(hydratedProject);
+                return hydratedProject;
+            }
+        } catch (err) {
+            console.error('Fetch project by ID error:', err);
+            throw err;
+        }
+    }, []);
+
+    const invalidateCache = useCallback(() => {
+        setProjectCache(null);
+        setGalleryCache(null);
+        setStatsCache(null);
+    }, []);
 
     const resetProject = useCallback(() => {
         setProject({
@@ -121,6 +210,7 @@ export const ProjectProvider = ({ children }) => {
             niche: null,
             visualStyle: null,
             platformFormat: null,
+            title: '',
             slides: [],
             intent: null,
             content: null,
@@ -153,6 +243,7 @@ export const ProjectProvider = ({ children }) => {
                 id: projectToSave.id,
                 niche: projectToSave.niche,
                 postType: projectToSave.postType,
+                title: projectToSave.title,
                 visualStyle: projectToSave.visualStyle,
                 platformFormat: projectToSave.platformFormat,
                 userIdea: projectToSave.userIdea,
@@ -173,12 +264,20 @@ export const ProjectProvider = ({ children }) => {
 
             const res = await axios.post(`${API_URL}/projects`, payload);
 
-            if (res.data.success && !project.id) {
-                // Set the ID if it's a new project
-                updateProject({ id: res.data.data._id });
-            }
+            if (res.data.success) {
+                const savedData = res.data.data;
+                // Invalidate cache since we have a new/updated project
+                invalidateCache();
 
-            return res.data.data;
+                // Sync context state with what was just saved and the new ID
+                updateProject({
+                    ...overrides,
+                    id: savedData._id,
+                    usage: savedData.usage || projectToSave.usage,
+                    status: savedData.status
+                });
+                return savedData;
+            }
         } catch (err) {
             console.error('Failed to save project:', err);
             throw err;
@@ -195,7 +294,15 @@ export const ProjectProvider = ({ children }) => {
         setStatus,
         resetProject,
         trackUsage,
-        saveProject
+        saveProject,
+        updatePipelineStage,
+        fetchProjects,
+        fetchGallery,
+        fetchStats,
+        fetchProjectById,
+        invalidateCache,
+        isInitialLoad,
+        setIsInitialLoad
     }
 
     return (

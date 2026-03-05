@@ -15,9 +15,11 @@ function InputForm({ onNext }) {
         platformFormat: project.platformFormat || PLATFORM_FORMATS.INSTAGRAM_FEED,
         userIdea: project.userIdea || '',
         slideCount: project.slideCount || 5,
+        slideCountMethod: project.slideCountMethod || 'manual',
         referenceImage: project.referenceImage || null,
         brandName: project.brandName || '',
         brandingPlacement: project.brandingPlacement || 'top-right',
+        title: project.title || '',
     })
     const [isDragging, setIsDragging] = useState(false)
 
@@ -71,13 +73,22 @@ function InputForm({ onNext }) {
             platformFormat: formData.platformFormat,
             userIdea: formData.userIdea,
             slideCount: formData.slideCount,
+            slideCountMethod: formData.slideCountMethod,
             referenceImage: formData.referenceImage,
+            title: formData.title,
             brandName: formData.brandName,
             brandingPlacement: formData.brandingPlacement,
         })
 
-        // Initialize slides for carousel ONLY if they don't exist yet
-        if (formData.postType === POST_TYPES.CAROUSEL && (!project.slides || project.slides.length === 0)) {
+        // If Auto method, clear any existing slides to let AI generate them from intent
+        if (formData.slideCountMethod === 'auto') {
+            updateProject({ slides: [] });
+        }
+
+        // Initialize slides for carousel ONLY if they don't exist and user chose MANUAL count
+        if (formData.postType === POST_TYPES.CAROUSEL &&
+            formData.slideCountMethod === 'manual' &&
+            (!project.slides || project.slides.length === 0)) {
             for (let i = 0; i < formData.slideCount; i++) {
                 addSlide({
                     id: `slide-${i}`,
@@ -158,20 +169,48 @@ function InputForm({ onNext }) {
                     </div>
 
                     {formData.postType === POST_TYPES.CAROUSEL && (
-                        <div className="form-section">
-                            <label className="form-label">Number of Slides</label>
-                            <div className="slide-count-selector">
-                                {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                        <div className="form-section full-width">
+                            <div className="section-header-row">
+                                <label className="form-label">Slide Count Strategy</label>
+                                <div className="strategy-toggle">
                                     <button
-                                        key={num}
                                         type="button"
-                                        className={`slide-chip ${formData.slideCount === num ? 'active' : ''}`}
-                                        onClick={() => setFormData({ ...formData, slideCount: num })}
+                                        className={`strategy-btn ${formData.slideCountMethod === 'auto' ? 'active' : ''}`}
+                                        onClick={() => setFormData({ ...formData, slideCountMethod: 'auto', slideCount: null })}
                                     >
-                                        {num}
+                                        Auto (AI Recommended)
                                     </button>
-                                ))}
+                                    <button
+                                        type="button"
+                                        className={`strategy-btn ${formData.slideCountMethod === 'manual' ? 'active' : ''}`}
+                                        onClick={() => setFormData({ ...formData, slideCountMethod: 'manual', slideCount: 5 })}
+                                    >
+                                        Manual (Choose Fixed)
+                                    </button>
+                                </div>
                             </div>
+
+                            {formData.slideCountMethod === 'manual' && (
+                                <div className="slide-count-selector animated-fade">
+                                    {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                                        <button
+                                            key={num}
+                                            type="button"
+                                            className={`slide-chip ${formData.slideCount === num ? 'active' : ''}`}
+                                            onClick={() => setFormData({ ...formData, slideCount: num })}
+                                        >
+                                            {num}
+                                        </button>
+                                    ))}
+                                    <span className="count-hint">Specify exact slides for your carousel.</span>
+                                </div>
+                            )}
+                            {formData.slideCountMethod === 'auto' && (
+                                <div className="auto-count-hint animated-fade">
+                                    <Layers size={14} />
+                                    <span>AI will analyze your vision and recommend the perfect slide sequence (usually 5-8 slides).</span>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -204,8 +243,23 @@ function InputForm({ onNext }) {
                     </p>
                 </div>
 
-                {/* Branding & Style Row */}
+                {/* Project Identity Row */}
                 <div className="form-row dual top-align">
+                    <div className="form-section">
+                        <label className="form-label" htmlFor="projectTitle">
+                            Project Title (Optional)
+                        </label>
+                        <input
+                            type="text"
+                            id="projectTitle"
+                            className="form-input"
+                            placeholder="e.g. AI Coding Guide 2026"
+                            value={formData.title}
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        />
+                        <p className="form-hint">A name to identify this project in your dashboard.</p>
+                    </div>
+
                     <div className="form-section">
                         <label className="form-label">Branding (Optional)</label>
                         <div className="branding-mini-form">

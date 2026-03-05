@@ -29,6 +29,11 @@ function App() {
                                         <CreatePage />
                                     </ProtectedRoute>
                                 } />
+                                <Route path="/create/:stage/:id" element={
+                                    <ProtectedRoute>
+                                        <CreatePage />
+                                    </ProtectedRoute>
+                                } />
                                 <Route path="/dashboard" element={
                                     <ProtectedRoute>
                                         <DashboardPage />

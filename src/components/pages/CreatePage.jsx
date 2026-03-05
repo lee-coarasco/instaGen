@@ -24,10 +24,22 @@ import { useNavigate, useParams } from 'react-router-dom'
 import './CreatePage.css'
 
 function CreatePage() {
-    const { setStage, saveProject, project } = useProject()
+    const { setStage, saveProject, project, fetchProjectById } = useProject()
     const { user } = useAuth()
     const navigate = useNavigate()
-    const { stage: urlStage } = useParams()
+    const { stage: urlStage, id: urlId } = useParams()
+    const [pageLoading, setPageLoading] = useState(!!urlId)
+
+    // Hydrate project from URL ID if context is empty (e.g. on refresh)
+    useEffect(() => {
+        if (urlId && (!project.id || project.id !== urlId)) {
+            setPageLoading(true)
+            fetchProjectById(urlId)
+                .finally(() => setPageLoading(false))
+        } else {
+            setPageLoading(false)
+        }
+    }, [urlId, fetchProjectById, project.id])
 
     const steps = [
         { id: PIPELINE_STAGES.INPUT, label: 'Input', icon: Edit3, component: InputForm, slug: 'input' },
@@ -50,19 +62,25 @@ function CreatePage() {
         }
     }, [urlStage, navigate])
 
-    const handleNext = async () => {
+    const handleNext = async (idOverride) => {
         const nextStepIndex = currentStep + 1
         if (nextStepIndex < steps.length) {
+            const currentId = idOverride || project.id;
+
             // Save draft if user is logged in, EXCEPT for the final transition which is handled by ImageGenerator
             if (user && steps[nextStepIndex].id !== 'complete') {
                 try {
-                    await saveProject({ status: 'draft' });
+                    const saved = await saveProject({ status: 'draft' });
+                    const nextId = currentId || saved?._id || saved?.id;
+                    navigate(`/create/${steps[nextStepIndex].slug}${nextId ? `/${nextId}` : ''}`)
                 } catch (err) {
                     console.error('Auto-save failed:', err);
+                    navigate(`/create/${steps[nextStepIndex].slug}${currentId ? `/${currentId}` : ''}`)
                 }
+            } else {
+                const targetId = currentId || project.id;
+                navigate(`/create/${steps[nextStepIndex].slug}${targetId ? `/${targetId}` : ''}`)
             }
-
-            navigate(`/create/${steps[nextStepIndex].slug}`)
             setStage(steps[nextStepIndex].id)
         }
     }
@@ -70,12 +88,24 @@ function CreatePage() {
     const handleBack = () => {
         const prevStepIndex = currentStep - 1
         if (prevStepIndex >= 0) {
-            navigate(`/create/${steps[prevStepIndex].slug}`)
+            navigate(`/create/${steps[prevStepIndex].slug}${project.id ? `/${project.id}` : ''}`)
             setStage(steps[prevStepIndex].id)
         }
     }
 
     const CurrentComponent = steps[currentStep].component
+
+    if (pageLoading) {
+        return (
+            <div className="create-page flex items-center justify-center">
+                <div className="text-center p-12 glass rounded-2xl">
+                    <Wand2 className="spin mx-auto mb-4 text-primary" size={48} />
+                    <h2 className="text-2xl font-bold mb-2">Retrieving Your Magic...</h2>
+                    <p className="opacity-70">Hang tight while we hydrate your workspace.</p>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="create-page">

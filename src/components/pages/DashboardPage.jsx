@@ -11,10 +11,9 @@ import {
     Plus,
     ChevronRight,
     Calendar,
-    Filter,
-    Loader,
-    ExternalLink,
-    Trash2
+    Trash2,
+    Search,
+    Loader
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './DashboardPage.css';
@@ -22,65 +21,107 @@ import './DashboardPage.css';
 const API_URL = 'http://localhost:5000/api';
 
 export default function DashboardPage() {
-    const { user, logout } = useAuth();
-    const { resetProject, updateProject, setStage } = useProject();
+    const { user, token } = useAuth();
+    const {
+        resetProject,
+        updateProject,
+        fetchProjects,
+        fetchStats,
+        isInitialLoad,
+        setIsInitialLoad,
+        invalidateCache
+    } = useProject();
     const navigate = useNavigate();
 
+    const [filter, setFilter] = useState('all');
+    const [searchQuery, setSearchQuery] = useState('');
     const [stats, setStats] = useState(null);
     const [projects, setProjects] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('all');
+    const [loading, setLoading] = useState(isInitialLoad);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
 
     useEffect(() => {
         const fetchDashboardData = async () => {
+            if (!user || !token) {
+                setLoading(false);
+                return;
+            }
             try {
-                const [statsRes, projectsRes] = await Promise.all([
-                    axios.get(`${API_URL}/projects/stats`),
-                    axios.get(`${API_URL}/projects`)
+                // Ensure auth header is set
+                axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+                // Fetch first page and stats
+                const [statsData, projectsResult] = await Promise.all([
+                    fetchStats(),
+                    fetchProjects(false, 1, 10) // Small initial batch for speed
                 ]);
-                setStats(statsRes.data.data);
-                setProjects(projectsRes.data.data);
+
+                // Handle both raw array (from cache) and object with pagination
+                const projectList = Array.isArray(projectsResult) ? projectsResult : projectsResult.data;
+                const pagination = projectsResult.pagination || {};
+
+                setProjects(projectList || []);
+                setStats(statsData || null);
+                setHasMore(pagination.page < pagination.pages);
+                setPage(1);
             } catch (err) {
                 console.error('Failed to fetch dashboard data:', err);
             } finally {
                 setLoading(false);
+                setIsInitialLoad(false);
             }
         };
 
         fetchDashboardData();
-    }, []);
+    }, [user, token, fetchProjects, fetchStats, setIsInitialLoad]);
+
+    const handleLoadMore = async () => {
+        if (loadingMore || !hasMore) return;
+        setLoadingMore(true);
+        try {
+            const nextPage = page + 1;
+            const result = await fetchProjects(true, nextPage, 10);
+
+            setProjects(prev => [...prev, ...result.data]);
+            setPage(nextPage);
+            setHasMore(result.pagination.page < result.pagination.pages);
+        } catch (err) {
+            console.error('Load more error:', err);
+        } finally {
+            setLoadingMore(false);
+        }
+    };
 
     const handleNewProject = () => {
         resetProject();
-        // Clear stage explicitly and navigate to start
         navigate('/create/input');
     };
 
     const handleContinueProject = (project) => {
-        // Hydrate project context with saved data
         updateProject({
             ...project,
             id: project._id,
             ...project.stages,
-            // Ensure slides are hydrated from structured content if possible
             slides: project.stages?.content?.slides || project.slides || []
         });
-        // Map project stage to URL slug
-        let targetSlug = 'input';
 
-        if (project.status === 'completed' || project.stages.finalImages?.length > 0) {
+        let targetSlug = 'input';
+        if (project.status === 'completed' || project.stages?.finalImages?.length > 0) {
             targetSlug = 'complete';
-        } else if (project.stages.visualPlan) {
+        } else if (project.stages?.visualPlan) {
             targetSlug = 'generate';
-        } else if (project.stages.content) {
+        } else if (project.stages?.content) {
             targetSlug = 'visuals';
-        } else if (project.stages.intent) {
+        } else if (project.stages?.intent) {
             targetSlug = 'content';
         } else if (project.userIdea) {
             targetSlug = 'intent';
         }
 
-        navigate(`/create/${targetSlug}`);
+        const projectId = project._id || project.id;
+        navigate(`/create/${targetSlug}${projectId ? `/${projectId}` : ''}`);
     };
 
     const handleDelete = async (e, id) => {
@@ -89,7 +130,8 @@ export default function DashboardPage() {
 
         try {
             await axios.delete(`${API_URL}/projects/${id}`);
-            setProjects(projects.filter(p => p._id !== id));
+            invalidateCache(); // Clear cache to force refetch
+            setProjects(prev => prev.filter(p => p._id !== id));
         } catch (err) {
             console.error('Delete failed:', err);
         }
@@ -97,17 +139,40 @@ export default function DashboardPage() {
 
     const [scrollPos, setScrollPos] = useState(0);
 
-    // Filter projects that have images and flatten them to get last 10 images
+    // Unified filtering logic
+    const filteredProjects = projects.filter(p => {
+        const displayName = p.title || p.stages?.content?.title || p.brandName || p.niche || 'Untitled Project';
+        const matchesSearch = displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.niche?.toLowerCase().includes(searchQuery.toLowerCase());
+
+        if (!matchesSearch) return false;
+
+        if (filter === 'all') return true;
+        if (filter === 'carousel') return p.postType?.toLowerCase() === 'carousel';
+        if (filter === 'story') return p.postType?.toLowerCase() === 'story';
+        if (filter === 'draft') return p.status === 'draft';
+        if (filter === 'finalized') return p.status === 'completed';
+        return true;
+    });
+
+    // Get first image from the 10 most recent projects that have images
     const latestImages = projects
-        .filter(p => p.stages.finalImages?.length > 0)
-        .flatMap(p => p.stages.finalImages.map(img => ({ ...img, projectName: p.brandName || p.niche || 'Untitled' })))
+        .filter(p => p.stages?.finalImages?.length > 0)
+        .map(p => ({
+            ...(p.stages?.finalImages?.[0] || {}),
+            title: p.title || p.userIdea || p.brandName || 'Untitled',
+            description: p.stages?.finalImages?.[0]?.displayCaption || p.stages?.content?.description || p.stages?.content?.slides?.[0]?.heading || p.stages?.finalImages?.[0]?.prompt,
+            postType: p.postType,
+            projectId: p._id
+        }))
         .slice(0, 10);
 
     // Auto-scroll logic for carousel
     useEffect(() => {
-        if (latestImages.length === 0) return;
+        if (latestImages.length <= 4) return;
+        const pageCount = Math.ceil(latestImages.length / 4);
         const interval = setInterval(() => {
-            setScrollPos(prev => (prev + 1) % latestImages.length);
+            setScrollPos(prev => (prev + 1) % pageCount);
         }, 5000);
         return () => clearInterval(interval);
     }, [latestImages.length]);
@@ -125,7 +190,7 @@ export default function DashboardPage() {
         <div className="dashboard-container container">
             <header className="dashboard-header">
                 <div className="user-welcome">
-                    <h1>Hey, {user?.name.split(' ')[0]}!</h1>
+                    <h1>Hey, {user?.name?.split(' ')[0] || 'there'}!</h1>
                     <p>Track your AI performance and creative history.</p>
                 </div>
             </header>
@@ -145,22 +210,32 @@ export default function DashboardPage() {
                     <div className="works-carousel-container">
                         <div
                             className="works-carousel-track"
-                            style={{ transform: `translateX(-${scrollPos * 100}%)` }}
+                            style={{
+                                transform: `translateX(-${scrollPos * (100 / (latestImages.length <= 4 ? 1 : latestImages.length / 4))}%)`,
+                                width: `${Math.max(100, (latestImages.length / 4) * 100)}%`
+                            }}
                         >
                             {latestImages.map((img, idx) => (
-                                <div key={idx} className="work-item-wrapper">
-                                    <div className="work-item glass">
-                                        <img src={img.url} alt={`Latest ${idx}`} />
+                                <div key={idx} className="work-item-wrapper" style={{ flex: `0 0 ${100 / latestImages.length}%` }}>
+                                    <div className="work-item glass" onClick={() => handleContinueProject(projects.find(p => p._id === img.projectId))}>
+                                        <div className="work-preview">
+                                            <img src={img.url} alt={`Latest ${idx}`} />
+                                        </div>
                                         <div className="work-info">
-                                            <span className="work-project">{img.projectName}</span>
-                                            <p className="work-prompt">{img.prompt?.substring(0, 50)}...</p>
+                                            <div className="work-info-header">
+                                                <span className="work-project">{img.title}</span>
+                                                <div className="work-badge">{img.postType || 'POST'}</div>
+                                            </div>
+                                            <p className="work-prompt">{img.description?.substring(0, 60)}...</p>
                                         </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
+                    </div>
+                    {latestImages.length > 4 && (
                         <div className="carousel-dots">
-                            {latestImages.map((_, i) => (
+                            {Array.from({ length: Math.ceil(latestImages.length / 4) }).map((_, i) => (
                                 <button
                                     key={i}
                                     className={`dot ${scrollPos === i ? 'active' : ''}`}
@@ -168,7 +243,7 @@ export default function DashboardPage() {
                                 />
                             ))}
                         </div>
-                    </div>
+                    )}
                 </section>
             )}
 
@@ -211,16 +286,27 @@ export default function DashboardPage() {
                         <History size={20} />
                         <h2>Recent History</h2>
                     </div>
-                    <div className="filter-pill-container">
-                        {['all', 'carousel', 'story'].map(f => (
-                            <button
-                                key={f}
-                                className={`filter-pill ${filter === f ? 'active' : ''}`}
-                                onClick={() => setFilter(f)}
-                            >
-                                {f}
-                            </button>
-                        ))}
+                    <div className="filter-group">
+                        <div className="search-bar-mini glass">
+                            <Search size={14} />
+                            <input
+                                type="text"
+                                placeholder="Search projects..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        <div className="filter-pill-container">
+                            {['all', 'carousel', 'story', 'draft', 'finalized'].map(f => (
+                                <button
+                                    key={f}
+                                    className={`filter-pill ${filter === f ? 'active' : ''}`}
+                                    onClick={() => setFilter(f)}
+                                >
+                                    {f}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
@@ -233,58 +319,85 @@ export default function DashboardPage() {
                             <button className="btn-primary" onClick={handleNewProject}>Create Now</button>
                         </div>
                     ) : (
-                        projects.map(project => (
-                            <div
-                                key={project._id}
-                                className="project-history-card glass"
-                                onClick={() => handleContinueProject(project)}
-                            >
-                                <div className="card-top">
-                                    <div className="project-type-badge">
-                                        {project.postType}
+                        filteredProjects.map(project => {
+                            const displayName = project.title || project.userIdea || project.brandName || 'Untitled Project';
+                            const firstImage = project.stages?.finalImages?.[0];
+
+                            return (
+                                <div
+                                    key={project._id}
+                                    className="project-history-card glass"
+                                    onClick={() => handleContinueProject(project)}
+                                >
+                                    <div className="card-top">
+                                        <button
+                                            className="delete-btn"
+                                            onClick={(e) => handleDelete(e, project._id)}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
                                     </div>
-                                    <button
-                                        className="delete-btn"
-                                        onClick={(e) => handleDelete(e, project._id)}
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
 
-                                <div className="project-preview">
-                                    {project.stages.finalImages?.[0] ? (
-                                        <img src={project.stages.finalImages[0].url} alt="Preview" />
-                                    ) : (
-                                        <div className="no-preview">
-                                            <ImageIcon size={32} />
-                                        </div>
-                                    )}
-                                </div>
+                                    <div className="project-preview">
+                                        {firstImage ? (
+                                            <img src={firstImage.url} alt="Preview" />
+                                        ) : (
+                                            <div className="no-preview">
+                                                <ImageIcon size={32} />
+                                            </div>
+                                        )}
+                                    </div>
 
-                                <div className="project-info">
-                                    <h3>{project.brandName || project.niche || 'Untitled Project'}</h3>
-                                    <div className="meta-row">
-                                        <div className="meta-item">
-                                            <Calendar size={14} />
-                                            <span>{new Date(project.updatedAt || project.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                                    <div className="project-info">
+                                        <div className="project-header-row">
+                                            <h3 className="project-title-text">{displayName}</h3>
+                                            <span className="mini-badge">{project.postType}</span>
                                         </div>
-                                        <div className="meta-item">
-                                            <Zap size={14} />
-                                            <span>{project.usage.totalTokens} tkn</span>
+                                        <div className="meta-row">
+                                            <div className="meta-item">
+                                                <Calendar size={14} />
+                                                <span>{new Date(project.updatedAt || project.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                                            </div>
+                                            <div className="meta-item">
+                                                <Zap size={14} />
+                                                <span>{project.usage?.totalTokens?.toLocaleString() || 0} tkn</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div className="card-footer">
-                                    <span className="status-indicator">
-                                        {project.status === 'completed' ? 'Finalized' : 'Draft'}
-                                    </span>
-                                    <ChevronRight size={18} />
+                                    <div className="card-footer">
+                                        <span className={`status-indicator ${project.status}`}>
+                                            {project.status === 'completed' ? 'Finalized' : 'Draft'}
+                                        </span>
+                                        <ChevronRight size={18} />
+                                    </div>
                                 </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
+
+                {hasMore && (
+                    <div className="load-more-container mt-8">
+                        <button
+                            className="btn-outline w-full py-4 flex items-center justify-center gap-2"
+                            onClick={handleLoadMore}
+                            disabled={loadingMore}
+                        >
+                            {loadingMore ? (
+                                <>
+                                    <Loader className="spin" size={18} />
+                                    <span>Retrieving more projects...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span>Load More History</span>
+                                    <ChevronRight size={18} className="rotate-90" />
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
             </section>
         </div>
     );

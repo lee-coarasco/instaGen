@@ -32,7 +32,10 @@
 
 .logo-icon {
     color: var(--color-primary);
-    -webkit-text-fill-color: initial;
+    /* Reset the inherited text-fill so SVG color applies correctly */
+    -webkit-text-fill-color: var(--color-primary);
+    fill: var(--color-primary);
+    flex-shrink: 0;
 }
 
 .navbar-links {

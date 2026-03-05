@@ -10,23 +10,36 @@
     align-items: center;
     justify-content: center;
     z-index: 1000;
+    padding: 20px;
 }
 
 .ig-preview-content {
     position: relative;
-    max-width: 500px;
-    width: 95%;
+    width: 100%;
+    max-width: 420px;
+    margin-top: 50px;
     animation: modalSlideUp 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
 .close-preview {
     position: absolute;
-    top: -48px;
+    top: -50px;
     right: 0;
-    background: none;
-    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: white;
     cursor: pointer;
+    transition: background 0.2s;
+}
+
+.close-preview:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .ig-post-shell {
@@ -35,6 +48,8 @@
     overflow: hidden;
     color: #262626;
     text-align: left;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
 }
 
 .ig-header {
@@ -72,13 +87,15 @@
     position: relative;
     width: 100%;
     aspect-ratio: 1/1;
-    background: #fafafa;
+    background: #f0f0f0;
+    overflow: hidden;
 }
 
 .ig-image-area img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    background: #f0f0f0;
 }
 
 .ig-nav-btn {

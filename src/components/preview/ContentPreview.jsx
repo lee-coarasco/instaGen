@@ -21,7 +21,7 @@ export default function ContentPreview({ onNext, onBack }) {
             const structuredContent = await contentEngine.structureContent(
                 project.intent,
                 project.userIdea,
-                Array(Number(project.slideCount) || 5).fill({})
+                project.slides || []
             )
 
             console.log('✅ Content structured:', structuredContent)
@@ -249,7 +249,7 @@ export default function ContentPreview({ onNext, onBack }) {
                     </div>
                     <div className="hashtags">
                         {content.hashtags.map((tag, i) => (
-                            <span key={i} className="hashtag">#{tag}</span>
+                            <span key={i} className="hashtag">#{tag.replace(/^#+/, '')}</span>
                         ))}
                     </div>
                 </div>
@@ -259,7 +259,7 @@ export default function ContentPreview({ onNext, onBack }) {
                         <MessageSquare size={20} />
                         <h3>Caption</h3>
                     </div>
-                    <p className="caption">{content.caption}</p>
+                    <p className="caption">{content.caption || content.description}</p>
                 </div>
             </div>
 

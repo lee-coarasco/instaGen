@@ -143,6 +143,7 @@ Respond ONLY with the JSON object.`
 
         return {
             ...content,
+            caption: this.generateCaption(content),
             niche: intent.niche,
             tone: intent.tone,
             audience: intent.audience,

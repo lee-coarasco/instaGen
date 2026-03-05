@@ -71,7 +71,7 @@ export const getGlobalMetrics = async (req, res) => {
 export const updateUser = async (req, res) => {
     try {
         const user = await User.findByIdAndUpdate(req.params.id, req.body, {
-            new: true,
+            returnDocument: 'after',
             runValidators: true
         });
 
