@@ -9,7 +9,8 @@ import {
     User as UserIcon,
     X,
     Menu,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Settings
 } from 'lucide-react';
 import Auth from '@components/auth/Auth';
 import './Navbar.css';
@@ -76,6 +77,14 @@ export default function Navbar() {
                             >
                                 <Sparkles size={18} />
                                 <span>Create</span>
+                            </Link>
+                            <Link
+                                to="/settings"
+                                className={`nav-link ${location.pathname === '/settings' ? 'active' : ''}`}
+                                onClick={() => setIsMenuOpen(false)}
+                            >
+                                <Settings size={18} />
+                                <span>Settings</span>
                             </Link>
                         </>
                     )}

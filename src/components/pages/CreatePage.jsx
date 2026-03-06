@@ -18,7 +18,8 @@ import {
     LayoutTemplate,
     Wand2,
     Check,
-    PartyPopper
+    PartyPopper,
+    RefreshCw
 } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import './CreatePage.css'
@@ -29,6 +30,7 @@ function CreatePage() {
     const navigate = useNavigate()
     const { stage: urlStage, id: urlId } = useParams()
     const [pageLoading, setPageLoading] = useState(!!urlId)
+    const [saving, setSaving] = useState(false)
 
     // Hydrate project from URL ID if context is empty (e.g. on refresh)
     useEffect(() => {
@@ -62,21 +64,31 @@ function CreatePage() {
         }
     }, [urlStage, navigate])
 
-    const handleNext = async (idOverride) => {
+    const handleNext = async (updates) => {
         const nextStepIndex = currentStep + 1
         if (nextStepIndex < steps.length) {
-            const currentId = idOverride || project.id;
+            // Include overrides in the save call to prevent stale data race condition
+            const currentData = { ...project, ...(updates || {}) };
+            const currentId = currentData.id;
 
             // Save draft if user is logged in, EXCEPT for the final transition which is handled by ImageGenerator
             if (user && steps[nextStepIndex].id !== 'complete') {
-                try {
-                    const saved = await saveProject({ status: 'draft' });
-                    const nextId = currentId || saved?._id || saved?.id;
-                    navigate(`/create/${steps[nextStepIndex].slug}${nextId ? `/${nextId}` : ''}`)
-                } catch (err) {
-                    console.error('Auto-save failed:', err);
-                    navigate(`/create/${steps[nextStepIndex].slug}${currentId ? `/${currentId}` : ''}`)
-                }
+                setSaving(true);
+
+                // Fire and forget save to speed up UI transition
+                saveProject(updates || { status: 'draft' })
+                    .then((saved) => {
+                        const newId = saved?._id || saved?.id;
+                        // Only replace URL if we just got a NEW ID to prevent interrupting user flow
+                        if (!currentId && newId) {
+                            navigate(`/create/${steps[nextStepIndex].slug}/${newId}`, { replace: true })
+                        }
+                    })
+                    .catch(err => console.error('Auto-save background failed:', err))
+                    .finally(() => setSaving(false));
+
+                // Navigate immediately using known ID
+                navigate(`/create/${steps[nextStepIndex].slug}${currentId ? `/${currentId}` : ''}`);
             } else {
                 const targetId = currentId || project.id;
                 navigate(`/create/${steps[nextStepIndex].slug}${targetId ? `/${targetId}` : ''}`)
@@ -112,7 +124,15 @@ function CreatePage() {
             {/* Progress Header */}
             <div className="progress-header glass">
                 <div className="progress-container">
-                    <UsageBanner />
+                    <div className="progress-top-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <UsageBanner />
+                        {saving && (
+                            <div className="saving-indicator animated-fade" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--color-primary)', fontSize: '0.85rem', fontWeight: '600' }}>
+                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'currentColor' }}></div>
+                                <span>Auto-saving...</span>
+                            </div>
+                        )}
+                    </div>
                     <div className="progress-steps">
                         {steps.map((step, index) => {
                             const isCompleted = index < currentStep

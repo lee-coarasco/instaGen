@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useProject } from '@contexts/ProjectContext'
 import { intentEngine } from '@services/intent/intentEngine'
 import { Sparkles, CheckCircle, AlertCircle, Loader, ArrowRight, RefreshCw, ArrowLeft } from 'lucide-react'
@@ -10,6 +10,13 @@ function IntentPreview({ onNext, onBack }) {
     const [error, setError] = useState(null)
     const [intent, setIntent] = useState(project.intent || null)
     const [analyzing, setAnalyzing] = useState(false)
+
+    // Sync local state if project intent is cleared/updated externally
+    useEffect(() => {
+        if (project.intent !== intent) {
+            setIntent(project.intent);
+        }
+    }, [project.intent]);
 
     const analyzeIntent = async () => {
         setAnalyzing(true)
@@ -32,6 +39,7 @@ function IntentPreview({ onNext, onBack }) {
                 brandingPlacement: project.brandingPlacement,
                 slideCount: project.slideCount,
                 slideCountMethod: project.slideCountMethod,
+                contentDensity: project.contentDensity,
             })
 
             setIntent(result)
@@ -177,6 +185,10 @@ function IntentPreview({ onNext, onBack }) {
                             <div className="intent-item">
                                 <label>Complexity</label>
                                 <p>{intent.complexity}</p>
+                            </div>
+                            <div className="intent-item">
+                                <label>Content Level</label>
+                                <p style={{ textTransform: 'capitalize' }}>{intent.contentDensity || 'Balanced'}</p>
                             </div>
                         </div>
 

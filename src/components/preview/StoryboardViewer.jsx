@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Image as ImageIcon, Check, RefreshCw, Terminal, Wand2, ArrowLeft } from 'lucide-react'
+import { Image as ImageIcon, Check, RefreshCw, Terminal, Wand2, ArrowLeft, Download, ZoomIn, X } from 'lucide-react'
 import { promptEngine } from '@services/generation/promptEngine'
+import { geminiClient } from '@services/ai/geminiClient'
 import { useProject } from '@contexts/ProjectContext'
 import './StoryboardViewer.css'
 
@@ -10,6 +11,16 @@ export default function StoryboardViewer({ onNext, onBack }) {
     const [error, setError] = useState(null)
     const [storyboardPrompt, setStoryboardPrompt] = useState(project.storyboardPrompt || null)
     const [showPrompt, setShowPrompt] = useState(false)
+    const [overviewImage, setOverviewImage] = useState(project.storyboardOverviewImage || null)
+    const [generatingOverview, setGeneratingOverview] = useState(false)
+    const [lightboxOpen, setLightboxOpen] = useState(false)
+
+    // Sync local state if project storyboardPrompt is cleared/updated externally
+    useEffect(() => {
+        if (project.storyboardPrompt !== storyboardPrompt) {
+            setStoryboardPrompt(project.storyboardPrompt);
+        }
+    }, [project.storyboardPrompt, storyboardPrompt]);
 
     // Generate prompt on mount if not exists
     useEffect(() => {
@@ -21,6 +32,8 @@ export default function StoryboardViewer({ onNext, onBack }) {
     const generatePrompt = async () => {
         setLoading(true)
         setError(null)
+        setOverviewImage(null)
+        updateProject({ storyboardOverviewImage: null })
 
         try {
             console.log('🎨 Generating storyboard prompt...')
@@ -49,6 +62,33 @@ export default function StoryboardViewer({ onNext, onBack }) {
         // For now, we move to the final generation stage
         onNext()
     }
+
+    const generateOverview = async () => {
+        if (!storyboardPrompt) return;
+        setGeneratingOverview(true);
+        setError(null);
+        try {
+            console.log('🎨 Generating storyboard overview image...');
+            const imageBase64 = await geminiClient.generateImage(storyboardPrompt);
+            setOverviewImage(imageBase64);
+            updateProject({ storyboardOverviewImage: imageBase64 });
+        } catch (err) {
+            console.error('Failed to generate overview:', err);
+            setError('Failed to generate visual overview. You can still proceed to final generation.');
+        } finally {
+            setGeneratingOverview(false);
+        }
+    };
+
+    const handleDownload = () => {
+        if (!overviewImage) return;
+        const link = document.createElement('a');
+        link.href = overviewImage;
+        link.download = `storyboard-overview-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     if (!project.visualPlan) {
         return (
@@ -80,7 +120,7 @@ export default function StoryboardViewer({ onNext, onBack }) {
         )
     }
 
-    if (error) {
+    if (error && !storyboardPrompt) {
         return (
             <div className="storyboard-viewer">
                 <div className="preview-error">
@@ -123,20 +163,56 @@ export default function StoryboardViewer({ onNext, onBack }) {
 
             <div className="storyboard-content">
                 <div className="concept-preview">
-                    <div className="concept-placeholder">
-                        <div className="placeholder-art">
-                            <ImageIcon size={64} />
-                            <div className="placeholder-text">
-                                <h3>Ready to Generate</h3>
-                                <p>The AI has crafted a detailed visual prompt based on your:</p>
-                                <ul>
-                                    <li>Intent: <strong>{project.intent?.goal}</strong></li>
-                                    <li>Style: <strong>{project.visualPlan?.illustration_style?.type}</strong></li>
-                                    <li>Theme: <strong>{project.intent?.visualLanguage}</strong></li>
-                                </ul>
+                    {overviewImage ? (
+                        <div className="generated-overview-wrapper">
+                            <div className="generated-overview-container group" onClick={() => setLightboxOpen(true)}>
+                                <img src={overviewImage} alt="Storyboard Overview" className="generated-overview-image" />
+                                <div className="overview-overlay">
+                                    <ZoomIn size={32} />
+                                    <span>Click to Enlarge</span>
+                                </div>
+                            </div>
+                            <div className="overview-actions-inline">
+                                <button className="btn-secondary" onClick={() => setLightboxOpen(true)}>
+                                    <ZoomIn size={16} /> View Full
+                                </button>
+                                <button className="btn-secondary" onClick={handleDownload}>
+                                    <Download size={16} /> Download
+                                </button>
                             </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="concept-placeholder">
+                            <div className="placeholder-art">
+                                <ImageIcon size={64} />
+                                <div className="placeholder-text">
+                                    <h3>Visual Overview</h3>
+                                    <p>The AI has crafted a detailed narrative flow. You can preview the entire carousel layout before generating individual slides.</p>
+                                    <button
+                                        className="btn-secondary"
+                                        style={{ marginTop: '1rem' }}
+                                        onClick={generateOverview}
+                                        disabled={generatingOverview || !storyboardPrompt}
+                                    >
+                                        {generatingOverview ? (
+                                            <>
+                                                <RefreshCw className="spin" size={16} /> Generating Preview...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ImageIcon size={16} /> Generate Storyboard Overview
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {error && storyboardPrompt && (
+                        <div className="error-text" style={{ color: 'var(--color-danger)', marginTop: '1rem', textAlign: 'center' }}>
+                            {error}
+                        </div>
+                    )}
                 </div>
 
                 {showPrompt && storyboardPrompt && (
@@ -166,6 +242,23 @@ export default function StoryboardViewer({ onNext, onBack }) {
                     Generate Images
                 </button>
             </div>
+
+            {lightboxOpen && overviewImage && (
+                <div className="storyboard-lightbox animated-fade" onClick={() => setLightboxOpen(false)}>
+                    <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+                        <button className="lightbox-close" onClick={() => setLightboxOpen(false)}>
+                            <X size={24} />
+                        </button>
+                        <img src={overviewImage} alt="Storyboard Overview Full" />
+                        <div className="lightbox-actions">
+                            <button className="btn-primary" onClick={handleDownload}>
+                                <Download size={20} />
+                                Download Overview
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

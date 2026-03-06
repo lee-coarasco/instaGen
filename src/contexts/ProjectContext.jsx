@@ -29,6 +29,7 @@ export const ProjectProvider = ({ children }) => {
         finalImages: [],
         status: PROJECT_STATUS.DRAFT,
         currentStage: PIPELINE_STAGES.INPUT,
+        contentDensity: 'balanced', // Options: minimal, balanced, detailed
         brandAssets: {
             logo: null,
             referenceImages: [],
@@ -54,17 +55,48 @@ export const ProjectProvider = ({ children }) => {
         }))
     }, [])
 
-    const trackUsage = useCallback((usageMetadata) => {
-        if (!usageMetadata) return;
+    const trackUsage = useCallback((usageMetadata, modelName, isImage) => {
+        if (!usageMetadata && !isImage) return;
 
         setProject((prev) => {
-            const newInput = prev.usage.inputTokens + (usageMetadata.promptTokenCount || 0)
-            const newOutput = prev.usage.outputTokens + (usageMetadata.candidatesTokenCount || 0)
+            const newInput = prev.usage.inputTokens + (usageMetadata?.promptTokenCount || 0)
+            const newOutput = prev.usage.outputTokens + (usageMetadata?.candidatesTokenCount || 0)
 
-            // GEMINI 1.5 FLASH PRICING (USD / 1M tokens)
-            // Input: $0.075, Output: $0.30
-            const inputCost = (newInput / 1000000) * 0.075
-            const outputCost = (newOutput / 1000000) * 0.30
+            // Dynamic Pricing based on known models. Fallbacks to 2.5 Flash.
+            let inputPriceM = 0.075;
+            let outputPriceM = 0.30;
+            let flatCost = 0;
+
+            const name = modelName ? modelName.toLowerCase() : '';
+
+            if (isImage) {
+                // Image Models Flat Pricing
+                if (name.includes('imagen-3.0')) {
+                    flatCost = 0.03;
+                } else if (name.includes('gemini-2.0-flash-exp-image-generation')) {
+                    flatCost = 0.00; // Free experimental
+                } else if (name.includes('gemini-2.5-flash-image')) {
+                    flatCost = 0.03; // Assumption placeholder
+                } else {
+                    flatCost = 0.03; // Fallback for unknown image generators
+                }
+            } else {
+                // Text Models Token Pricing (per 1 Million tokens)
+                if (name.includes('gemini-2.0-flash')) {
+                    inputPriceM = 0.10;
+                    outputPriceM = 0.40;
+                } else if (name.includes('gemini-2.0-pro') || name.includes('1.5-pro')) {
+                    inputPriceM = 1.25;
+                    outputPriceM = 5.00;
+                } else if (name.includes('gemini-2.5-flash')) {
+                    inputPriceM = 0.075;
+                    outputPriceM = 0.30;
+                }
+            }
+
+            const currentInputCost = ((usageMetadata?.promptTokenCount || 0) / 1000000) * inputPriceM;
+            const currentOutputCost = ((usageMetadata?.candidatesTokenCount || 0) / 1000000) * outputPriceM;
+            const newCostAdded = currentInputCost + currentOutputCost + flatCost;
 
             return {
                 ...prev,
@@ -72,7 +104,7 @@ export const ProjectProvider = ({ children }) => {
                     inputTokens: newInput,
                     outputTokens: newOutput,
                     totalTokens: newInput + newOutput,
-                    estimatedCost: inputCost + outputCost
+                    estimatedCost: (prev.usage.estimatedCost || 0) + newCostAdded
                 }
             }
         })
@@ -149,18 +181,21 @@ export const ProjectProvider = ({ children }) => {
 
     const fetchGallery = useCallback(async (forceRefresh = false, page = 1, limit = 24) => {
         if (!forceRefresh && galleryCache && page === 1) {
-            return { data: galleryCache, pagination: { page: 1, pages: 1 } };
+            return galleryCache; // Return the full cached object including pagination
         }
         try {
             const res = await axios.get(`${API_URL}/projects/gallery`, { params: { page, limit } });
-            const data = res.data.data;
+            const result = {
+                data: res.data.data,
+                pagination: res.data.pagination
+            };
             if (page === 1) {
-                setGalleryCache(data);
+                setGalleryCache(result);
             }
-            return { data, pagination: res.data.pagination };
+            return result;
         } catch (err) {
             console.error('Fetch gallery error:', err);
-            return { data: [], pagination: {} };
+            return { data: [], pagination: { page: 1, pages: 1 } };
         }
     }, [galleryCache]);
 
@@ -175,6 +210,26 @@ export const ProjectProvider = ({ children }) => {
             return null;
         }
     }, [statsCache]);
+
+    const getResumeSlug = useCallback((projectObj) => {
+        if (!projectObj) return 'input';
+
+        // Priority check in REVERSE order of pipeline stages
+        if (projectObj.status === 'completed') {
+            return 'complete';
+        } else if (projectObj.stages?.storyboardPrompt) {
+            return 'generate';
+        } else if (projectObj.stages?.visualPlan) {
+            return 'storyboard';
+        } else if (projectObj.stages?.content) {
+            return 'visuals';
+        } else if (projectObj.stages?.intent) {
+            return 'content';
+        } else if (projectObj.userIdea) {
+            return 'intent';
+        }
+        return 'input';
+    }, []);
 
     const fetchProjectById = useCallback(async (id) => {
         try {
@@ -251,6 +306,7 @@ export const ProjectProvider = ({ children }) => {
                 referenceImage: projectToSave.referenceImage,
                 brandName: projectToSave.brandName,
                 brandingPlacement: projectToSave.brandingPlacement,
+                contentDensity: projectToSave.contentDensity,
                 stages: {
                     intent: projectToSave.intent,
                     content: projectToSave.content,
@@ -274,7 +330,10 @@ export const ProjectProvider = ({ children }) => {
                     ...overrides,
                     id: savedData._id,
                     usage: savedData.usage || projectToSave.usage,
-                    status: savedData.status
+                    status: savedData.status,
+                    ...savedData.stages,
+                    // Ensure slides are correctly mapped if they moved in stages.content
+                    slides: savedData.stages?.content?.slides || projectToSave.slides
                 });
                 return savedData;
             }
@@ -300,6 +359,7 @@ export const ProjectProvider = ({ children }) => {
         fetchGallery,
         fetchStats,
         fetchProjectById,
+        getResumeSlug,
         invalidateCache,
         isInitialLoad,
         setIsInitialLoad

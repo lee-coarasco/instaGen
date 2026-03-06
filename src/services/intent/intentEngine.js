@@ -11,7 +11,7 @@ export class IntentEngine {
      * Analyze user input and extract creative intent
      */
     async analyzeIntent(userInput, context = {}) {
-        const { niche, postType, referenceImage, brandName, brandingPlacement } = context
+        const { niche, postType, referenceImage, brandName, brandingPlacement, contentDensity } = context
 
         const nicheProfile = getNicheProfile(niche)
 
@@ -28,7 +28,7 @@ export class IntentEngine {
 
             // Validate and enrich intent
             return this.validateIntent(
-                { ...intent, referenceStyle, brandName, brandingPlacement },
+                { ...intent, referenceStyle, brandName, brandingPlacement, contentDensity },
                 nicheProfile
             )
         } catch (error) {

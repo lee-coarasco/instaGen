@@ -10,7 +10,8 @@
     z-index: var(--z-sticky);
     padding: var(--space-xl) 0;
     margin-bottom: var(--space-2xl);
-    background: var(--glass-bg); /* Ensure solid/glass bg for sticky */
+    background: var(--glass-bg);
+    /* Ensure solid/glass bg for sticky */
     border-bottom: 1px solid var(--glass-border);
     transition: all 0.3s ease;
 }
@@ -40,7 +41,8 @@
 /* CONNECTING LINES */
 .step-connector {
     position: absolute;
-    top: 20px; /* Half of indicator size (40px/2) */
+    top: 20px;
+    /* Half of indicator size (40px/2) */
     left: -50%;
     width: 100%;
     height: 3px;
@@ -71,9 +73,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy */
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* Bouncy */
     color: var(--color-text-secondary);
-    z-index: 2; /* Above connector */
+    z-index: 2;
+    /* Above connector */
 }
 
 /* Active State */
@@ -101,7 +105,8 @@
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    min-height: 40px; /* Prevent layout shift */
+    min-height: 40px;
+    /* Prevent layout shift */
 }
 
 .step-label {
@@ -128,8 +133,34 @@
 
 /* ANIMATIONS */
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse-subtle {
+    0% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 1;
+        text-shadow: 0 0 8px rgba(124, 58, 237, 0.4);
+    }
+
+    100% {
+        opacity: 0.6;
+    }
+}
+
+.saving-indicator {
+    animation: pulse-subtle 2s infinite ease-in-out;
 }
 
 /* === MAIN CONTENT === */
@@ -159,21 +190,23 @@
 /* === RESPONSIVE === */
 @media (max-width: 768px) {
     .step-content {
-        display: none; /* Hide labels on mobile to save space */
+        display: none;
+        /* Hide labels on mobile to save space */
     }
-    
+
     .progress-step.active .step-content {
-        display: flex; /* Only show active label */
+        display: flex;
+        /* Only show active label */
         position: absolute;
         top: 45px;
         width: 150px;
     }
-    
+
     .step-indicator {
         width: 32px;
         height: 32px;
     }
-    
+
     .step-connector {
         top: 16px;
     }

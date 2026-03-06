@@ -251,38 +251,41 @@ This allows the user to see the entire carousel flow and visual consistency befo
 
     return `Create a high-quality square Instagram post (1080x1080px).
 
-CRITICAL: ONLY render the text provided in the "TEXT TO RENDER" section. Do NOT render any other words, character counts, technical specs, or labels.
+### 🚨 CRITICAL TYPOGRAPHY MANDATE (STRICT ENFORCEMENT) 🚨
+ONLY render the exact characters provided in the "TEXT TO RENDER" section. Do NOT deviate, do NOT summarize, and do NOT add your own words.
 
-TEXT TO RENDER (EVERYTHING ELSE IS STRICTLY FORBIDDEN):
+### 📝 TEXT TO RENDER:
 - Heading: "${slide.heading}"
 - Subtext: "${slide.subtext}"
 ${visualPlan.brandName ? `- Brand Name: "${visualPlan.brandName}"` : ''}
 
-STRICT NEGATIVE RULES (FORBIDDEN):
-- NEVER render technical metadata like "HSL", "Inter", "size", "px", "60px", "bold", "placement", "18l", "0,0%", "40".
-- NEVER render color codes (e.g., #FFFFFF, rgb, hsl).
-- NEVER render font details or CSS properties as text.
-- NEVER render prompt keywords or instructions as text.
-- NEVER render slide numbers, dimensions, or percentages.
-- If it's not in the "TEXT TO RENDER" list, it is STICKTLY PROHIBITED from appearing in the image.
+### 🚷 STRICT PROHIBITIONS (STRICT ENFORCEMENT):
+1. NO SLIDE NUMBERS: Do NOT render "Slide X", "Slide X of Y", "X/Y", or any page indexing.
+2. NO PROGRESS ELEMENTS: No bars, dots, or pagination UI.
+3. NO UI ELEMENTS: Do not render buttons, close icons, or software frames.
+4. NO METADATA: Do not render technical specs or timestamps.
 
-VISUAL STYLE & BRANDING INSTRUCTIONS:
-- This is slide ${slideIndex + 1} of a series. It must match the visual identity of all other slides perfectly.
-- Branding placement: Place the brand name "${visualPlan.brandName}" at the ${visualPlan.brandingPlacement}.
-- Branding style: Use the color ${design_tokens.branding?.color || design_tokens.colors.primary} and a ${design_tokens.branding?.size || 'small'} font weight.
-- Color Palette: Background: ${design_tokens.colors.background}, Primary: ${design_tokens.colors.primary}, Accent: ${design_tokens.colors.accent}.
+### 🛑 LINGUISTIC ACCURACY MANDATE:
+1. NO NONSENSE WORDS: Every word MUST be real English. NEVER invent words like "boliplerate", "accelasdopment", or "orchstertation".
+2. NO DUPLICATION: Do not print words twice.
+3. NO TRUNCATION: Render the full text provided without cutting off.
+
+### 🎨 DESIGN SYSTEM & STYLE:
+- Brand Name Placement: ${visualPlan.brandName ? visualPlan.brandingPlacement : 'None'}
+- Background: ${design_tokens.colors.background}
+- Primary Accent: ${design_tokens.colors.primary}
+- Illustration: ${illustration_style.type} (${illustration_style.mood} mood).
 - Composition: ${visualPlan.layout_system.composition}.
-- Illustration Style: ${illustration_style.type} (${illustration_style.mood} mood).
 
-IMAGE DESCRIPTION:
+### 🖼️ VISUAL CONTENT:
 ${slideVisual.visual_description}
 Focal point: ${slideVisual.focal_point}
 Supporting elements: ${slideVisual.supporting_elements.join(', ')}
 
-CONSISTENCY ENFORCEMENT:
 ${consistency_guidelines.character_references}
 ${consistency_guidelines.style_references}
-`
+
+FINAL INSTRUCTION: Ensure high contrast between text and background for maximum legibility. Render the text as if it were professional typography.`
   }
 
   /**

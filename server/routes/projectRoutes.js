@@ -5,7 +5,8 @@ import {
     saveProject,
     deleteProject,
     getUserStats,
-    getGallery
+    getGallery,
+    proxyImage
 } from '../controllers/projectController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -19,6 +20,7 @@ router.route('/')
 
 router.get('/gallery', getGallery);
 router.get('/stats', getUserStats);
+router.get('/proxy-image', proxyImage);
 
 router.route('/:id')
     .get(getProject)

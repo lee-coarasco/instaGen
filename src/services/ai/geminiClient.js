@@ -29,19 +29,24 @@ class GeminiClient {
         this.usageCallback = callback
     }
 
-    handleUsage(response) {
-        if (response.usageMetadata && this.usageCallback) {
-            this.usageCallback(response.usageMetadata)
+    handleUsage(response, modelName = null, isImage = false) {
+        if (response && response.usageMetadata && this.usageCallback) {
+            this.usageCallback(response.usageMetadata, modelName || this.currentModel, isImage)
+        } else if (isImage && this.usageCallback) {
+            // Track image generation cost even if Gemini doesn't return standard text usage block
+            this.usageCallback({ promptTokenCount: 0, candidatesTokenCount: 0 }, modelName || this.currentModel, true);
         }
     }
 
-    async initializeModels() {
+    async initializeModels(preferredTextModel = null) {
         console.log('🔍 Initializing Gemini models...')
         console.log('🔑 API Key present:', this.apiKey ? 'Yes' : 'No')
         console.log('🔑 API Key starts with:', this.apiKey.substring(0, 10))
 
+        const savedModel = preferredTextModel || localStorage.getItem('instaGen-textModel');
+
         // Updated list based on user's available models
-        const modelNamesToTry = [
+        const modelNamesToTry = savedModel ? [savedModel] : [
             'models/gemini-2.5-flash',
             'models/gemini-2.0-flash',
             'models/gemini-flash-latest',
@@ -59,7 +64,7 @@ class GeminiClient {
                 const response = await result.response
                 const text = response.text()
 
-                // Success!
+                this.handleUsage(response, modelName, false)
                 this.textModel = model
                 this.visionModel = model
                 this.currentModel = modelName
@@ -89,6 +94,21 @@ class GeminiClient {
     }
 
     /**
+     * Fetch available models from Google
+     */
+    async getAvailableModels() {
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${this.apiKey}`);
+            if (!response.ok) throw new Error('Failed to fetch models');
+            const data = await response.json();
+            return data.models || [];
+        } catch (error) {
+            console.error('Error fetching available models:', error);
+            return [];
+        }
+    }
+
+    /**
      * Generate text response from prompt
      */
     async generateText(prompt, options = {}) {
@@ -97,7 +117,7 @@ class GeminiClient {
         try {
             const result = await this.textModel.generateContent(prompt)
             const response = await result.response
-            this.handleUsage(response)
+            this.handleUsage(response, this.currentModel, false)
             return response.text()
         } catch (error) {
             console.error('Gemini text generation error:', error)
@@ -117,7 +137,7 @@ class GeminiClient {
             console.log('📤 Sending JSON request to Gemini...')
             const result = await this.textModel.generateContent(jsonPrompt)
             const response = await result.response
-            this.handleUsage(response)
+            this.handleUsage(response, this.currentModel, false)
             const text = response.text()
             console.log('📥 Received response from Gemini')
             console.log('📄 Response length:', text.length, 'characters')
@@ -153,7 +173,7 @@ class GeminiClient {
 
             const result = await this.visionModel.generateContent([prompt, imagePart])
             const response = await result.response
-            this.handleUsage(response)
+            this.handleUsage(response, this.currentModel, false)
             return response.text()
         } catch (error) {
             console.error('Gemini vision analysis error:', error)
@@ -168,11 +188,13 @@ class GeminiClient {
     async generateImage(prompt, options = {}) {
         await this.ensureInitialized()
 
+        const savedImageModel = localStorage.getItem('instaGen-imageModel');
+
         // Models to try based on user's verified list
-        const imageModels = [
+        const imageModels = savedImageModel ? [savedImageModel] : [
+            'models/imagen-3.0-generate-001', // Standard fallback
             'models/gemini-2.0-flash-exp-image-generation',
             'models/gemini-2.5-flash-image', // Nano Banana
-            'models/imagen-3.0-generate-001', // Standard fallback
         ]
 
         // Loop through models until one works or we timeout
@@ -195,7 +217,7 @@ class GeminiClient {
                     const parts = response.candidates[0].content.parts;
                     console.log(`📥 Model ${modelName} returned ${parts.length} parts`);
 
-                    this.handleUsage(response)
+                    this.handleUsage(response, modelName, true)
                     for (const part of parts) {
                         // Debug log part types
                         const partTypes = Object.keys(part).filter(k => k !== 'text');

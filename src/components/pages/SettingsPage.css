@@ -1,0 +1,103 @@
+.settings-page {
+    padding: var(--space-2xl) 0;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.settings-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-2xl);
+}
+
+.settings-header .header-icon {
+    color: var(--color-primary);
+}
+
+.settings-header h1 {
+    font-size: var(--font-size-3xl);
+    margin-bottom: var(--space-xs);
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.settings-header p {
+    color: var(--color-text-secondary);
+}
+
+.settings-content {
+    padding: var(--space-2xl);
+    border-radius: var(--radius-xl);
+}
+
+.settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--color-text-primary);
+}
+
+.section-header h3 {
+    font-size: var(--font-size-xl);
+}
+
+.section-header svg {
+    color: var(--color-primary);
+}
+
+.section-desc {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--space-sm);
+}
+
+.settings-select {
+    width: 100%;
+    padding: var(--space-md);
+    background: var(--color-surface);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-md);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.settings-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.settings-select option {
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+}
+
+.settings-divider {
+    height: 1px;
+    background: var(--glass-border);
+    margin: var(--space-2xl) 0;
+}
+
+.settings-actions {
+    margin-top: var(--space-2xl);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.success-msg {
+    color: var(--color-success);
+    font-weight: 500;
+}

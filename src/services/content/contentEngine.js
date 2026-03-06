@@ -32,6 +32,13 @@ export class ContentEngine {
      */
     buildContentPrompt(intent, userInput, slides) {
         const slideCount = slides.length || intent.suggested_slide_count || 5
+        const density = intent.contentDensity || 'balanced'
+
+        const densityGuideline = {
+            minimal: "Keep content extremely brief. 1 short header (max 4 words) and 1 punchy one-liner subtext (max 10 words).",
+            balanced: "Standard Instagram format. Hooky headers (max 6 words) and 1-2 concise sentences for subtext (max 18 words).",
+            detailed: "In-depth educational content. Detailed headers (max 8 words) and 2-3 informative sentences for subtext (max 35 words)."
+        }[density]
 
         return `You are an expert Instagram content strategist specializing in carousel posts.
 
@@ -44,14 +51,14 @@ CREATIVE INTENT (from analysis):
 - Tone: ${intent.tone}
 - Visual Language: ${intent.visual_language}
 - Key Messages: ${intent.key_messages?.join(', ')}
+- Content Level: ${density.toUpperCase()} (${densityGuideline})
 
 TASK:
 Create ${slideCount} slides for an Instagram carousel. Each slide must:
-1. Have a SHORT, punchy heading (max 5 words)
-2. Have concise subtext (max 15 words)
-3. Be optimized for mobile readability
-4. Follow a logical flow (Hook → Explain → Detail → CTA)
-5. Maintain consistent tone throughout
+1. Follow the ${density.toUpperCase()} density requirements: ${densityGuideline}
+2. Be optimized for mobile readability while maximizing value
+3. Follow a logical flow (Hook → Explain → Detail → CTA)
+4. Maintain consistent tone throughout
 
 SLIDE INTENT TYPES:
 - hook: Grab attention (slide 1)
@@ -60,7 +67,7 @@ SLIDE INTENT TYPES:
 - cta: Call to action (last slide)
 
 INSTAGRAM BEST PRACTICES:
-- Keep text minimal and scannable
+- Keep text scannable but provide high-value insights
 - Use power words and action verbs
 - Create curiosity and value
 - End with clear next step
@@ -72,8 +79,8 @@ OUTPUT FORMAT (JSON):
   "slides": [
     {
       "slide_number": 1,
-      "heading": "string - max 5 words",
-      "subtext": "string - max 15 words",
+      "heading": "string",
+      "subtext": "string",
       "intent": "hook|explain|detail|cta",
       "visual_focus": "string - what should be illustrated",
       "text_hierarchy": {
@@ -86,14 +93,18 @@ OUTPUT FORMAT (JSON):
   "content_flow": "string - brief description of the narrative flow"
 }
 
+LINGUISTIC PURITY (STRICT):
+- Use ONLY real English words from a standard dictionary.
+- NEVER hallucinate or invent brand-new words (e.g., "boliplerate", "accelasdopment", "orchstertation").
+- Ensure all technical terms are spelled correctly for the given niche.
+- PROHIBITED: Do not include any slide numbers, UI labels, or process status text inside the headings or subtexts.
+
 IMPORTANT:
 - Slide 1 MUST be "hook" intent
 - Last slide MUST be "cta" intent
 - Middle slides should be "explain" or "detail"
-- Keep ALL text Instagram-friendly (short, punchy, mobile-optimized)
-- STRICTLY NO technical metadata, font specifications (e.g., "72p", "Roboto"), or linter output in the text fields.
-- Ensure all text is grammatically correct and free of typos.
-- Do not use nonsense words.
+- Ensure for ${density} mode the text matches the graininess required
+- STRICTLY NO technical metadata, font specifications, or linter output.
 
 Respond ONLY with the JSON object.`
     }
@@ -102,6 +113,13 @@ Respond ONLY with the JSON object.`
      * Validate and enrich content structure
      */
     validateContent(content, intent) {
+        const density = intent.contentDensity || 'balanced'
+        const limits = {
+            minimal: { header: 6, sub: 12 },
+            balanced: { header: 8, sub: 22 },
+            detailed: { header: 12, sub: 45 }
+        }[density]
+
         // Ensure required fields
         if (!content.slides || !Array.isArray(content.slides)) {
             throw new Error('Content missing slides array')
@@ -113,15 +131,18 @@ Respond ONLY with the JSON object.`
                 throw new Error(`Slide ${index + 1} missing heading or subtext`)
             }
 
-            // Enforce text length limits
-            if (slide.heading.split(' ').length > 6) {
-                console.warn(`Slide ${index + 1} heading too long, truncating`)
-                slide.heading = slide.heading.split(' ').slice(0, 6).join(' ')
+            // Enforce text length limits based on density
+            const headerWords = slide.heading.split(' ').length
+            const subWords = slide.subtext.split(' ').length
+
+            if (headerWords > limits.header) {
+                console.warn(`Slide ${index + 1} heading too long for ${density} mode, truncating`)
+                slide.heading = slide.heading.split(' ').slice(0, limits.header).join(' ')
             }
 
-            if (slide.subtext.split(' ').length > 18) {
-                console.warn(`Slide ${index + 1} subtext too long, truncating`)
-                slide.subtext = slide.subtext.split(' ').slice(0, 18).join(' ')
+            if (subWords > limits.sub) {
+                console.warn(`Slide ${index + 1} subtext too long for ${density} mode, truncating`)
+                slide.subtext = slide.subtext.split(' ').slice(0, limits.sub).join(' ')
             }
 
             // Ensure intent is valid

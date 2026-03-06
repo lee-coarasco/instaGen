@@ -30,8 +30,9 @@ const processProjectImages = async (projectData) => {
         }
         return projectData;
     } catch (error) {
-        console.warn('⚠️ Cloud upload failed, falling back to database storage:', error.message);
-        return projectData; // Fallback to storing in DB if cloud fails (subject to 16MB limit)
+        console.error('❌ Cloud Storage Failure:', error.message);
+        // Strict policy: Do not fall back to database storage for images
+        throw new Error(`Critical: Cloud storage upload failed (${error.message}). Please check Firebase bucket configuration.`);
     }
 };
 
@@ -90,14 +91,22 @@ export const getProjects = async (req, res) => {
                                                         $filter: {
                                                             input: { $ifNull: ['$slides', []] },
                                                             as: 's',
-                                                            cond: { $eq: ['$$s.index', '$firstImage.slideIndex'] }
+                                                            cond: { $eq: [{ $toInt: '$$s.slide_number' }, { $add: [{ $toInt: '$firstImage.slideIndex' }, 1] }] }
                                                         }
                                                     },
                                                     0
                                                 ]
                                             }
                                         },
-                                        in: { $ifNull: ['$$slide.heading', '$$slide.text', '$firstImage.prompt'] }
+                                        in: {
+                                            $ifNull: [
+                                                '$firstImage.displayCaption',
+                                                '$$slide.heading',
+                                                '$$slide.subtext',
+                                                '$$slide.text',
+                                                '$firstImage.prompt'
+                                            ]
+                                        }
                                     }
                                 }
                             }],
@@ -150,6 +159,7 @@ export const getGallery = async (req, res) => {
                     url: '$stages.finalImages.url',
                     technicalPrompt: '$stages.finalImages.prompt',
                     slideIndex: '$stages.finalImages.slideIndex',
+                    displayCaption: '$stages.finalImages.displayCaption',
                     status: '$stages.finalImages.status',
                     createdAt: 1,
                     // Try to find the original slide content for this image
@@ -159,7 +169,7 @@ export const getGallery = async (req, res) => {
                                 $filter: {
                                     input: { $ifNull: ['$stages.content.slides', []] },
                                     as: 'slide',
-                                    cond: { $eq: ['$$slide.index', '$stages.finalImages.slideIndex'] }
+                                    cond: { $eq: [{ $toInt: '$$slide.slide_number' }, { $add: [{ $toInt: '$stages.finalImages.slideIndex' }, 1] }] }
                                 }
                             },
                             0
@@ -177,7 +187,15 @@ export const getGallery = async (req, res) => {
                     status: 1,
                     createdAt: 1,
                     // Set displayCaption to heading if exists, else fallback
-                    displayCaption: { $ifNull: ['$slideDetails.heading', '$slideDetails.subtext', '$technicalPrompt'] }
+                    displayCaption: {
+                        $ifNull: [
+                            '$displayCaption',
+                            '$slideDetails.heading',
+                            '$slideDetails.subtext',
+                            '$slideDetails.text',
+                            '$technicalPrompt'
+                        ]
+                    }
                 }
             },
             { $sort: { createdAt: -1, slideIndex: 1 } }, // Fine-grained sort after unwind
@@ -348,5 +366,34 @@ export const getUserStats = async (req, res) => {
     } catch (err) {
         console.error('getUserStats error:', err);
         res.status(400).json({ success: false, message: err.message });
+    }
+};
+/**
+ * @desc    Proxy an image URL to bypass CORS for downloads/ZIP
+ * @route   GET /api/projects/proxy-image
+ * @access  Private
+ */
+export const proxyImage = async (req, res) => {
+    try {
+        const { url } = req.query;
+        if (!url) return res.status(400).json({ message: 'URL is required' });
+
+        // Security: Ensure it's a storage.googleapis.com URL to prevent open proxying
+        if (!url.includes('storage.googleapis.com')) {
+            return res.status(403).json({ message: 'Only cloud storage URLs are allowed' });
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to fetch from storage: ${response.statusText}`);
+
+        const contentType = response.headers.get('content-type');
+        res.setHeader('Content-Type', contentType || 'image/png');
+
+        // Pipe the response body to our response
+        const arrayBuffer = await response.arrayBuffer();
+        res.send(Buffer.from(arrayBuffer));
+    } catch (err) {
+        console.error('Proxy Image Error:', err);
+        res.status(500).json({ message: 'Failed to proxy image' });
     }
 };

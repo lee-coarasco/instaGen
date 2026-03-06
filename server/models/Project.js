@@ -16,6 +16,7 @@ const projectSchema = new mongoose.Schema({
     referenceImage: String,
     brandName: String,
     brandingPlacement: String,
+    contentDensity: String,
     stages: {
         intent: Object,
         content: Object,
@@ -27,6 +28,7 @@ const projectSchema = new mongoose.Schema({
                 prompt: String,
                 slideIndex: Number,
                 status: String,
+                displayCaption: String,
                 generationHistory: [
                     {
                         url: String,

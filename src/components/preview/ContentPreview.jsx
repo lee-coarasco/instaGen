@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Sparkles, Check, RefreshCw, Edit2, Trash2, Hash, MessageSquare, ArrowLeft } from 'lucide-react'
 import { contentEngine } from '@services/content/contentEngine'
 import { useProject } from '@contexts/ProjectContext'
@@ -10,6 +10,13 @@ export default function ContentPreview({ onNext, onBack }) {
     const [error, setError] = useState(null)
     const [content, setContent] = useState(project.content || null)
     const [editingSlide, setEditingSlide] = useState(null)
+
+    // Sync local state if project content is cleared/updated externally
+    useEffect(() => {
+        if (project.content !== content) {
+            setContent(project.content);
+        }
+    }, [project.content, content]);
 
     const structureContent = async () => {
         setLoading(true)
@@ -174,7 +181,12 @@ export default function ContentPreview({ onNext, onBack }) {
                     <Check className="header-icon success" />
                     <div>
                         <h2>Content Structured</h2>
-                        <p>{content.slides.length} slides ready for visual planning</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <p style={{ margin: 0 }}>{content.slides.length} slides ready for visual planning</p>
+                            <span className="density-badge">
+                                {project.contentDensity || 'Balanced'} Mode
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>

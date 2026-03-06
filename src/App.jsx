@@ -5,6 +5,7 @@ import HomePage from '@components/pages/HomePage'
 import CreatePage from '@components/pages/CreatePage'
 import DashboardPage from '@components/pages/DashboardPage'
 import GalleryPage from '@components/pages/GalleryPage'
+import SettingsPage from '@components/pages/SettingsPage'
 import Navbar from '@components/common/Navbar'
 import ProtectedRoute from '@components/auth/ProtectedRoute'
 import './App.css'
@@ -42,6 +43,11 @@ function App() {
                                 <Route path="/gallery" element={
                                     <ProtectedRoute>
                                         <GalleryPage />
+                                    </ProtectedRoute>
+                                } />
+                                <Route path="/settings" element={
+                                    <ProtectedRoute>
+                                        <SettingsPage />
                                     </ProtectedRoute>
                                 } />
                             </Routes>

@@ -13,6 +13,7 @@ import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 import InstagramModal from '@components/common/InstagramModal'
 import './ProjectSuccess.css'
+import { formatCurrency } from '@utils/formatting'
 
 import { useNavigate, useParams } from 'react-router-dom'
 import {
@@ -64,19 +65,83 @@ export default function ProjectSuccess() {
         navigate('/create/input')
     }
 
+    const [downloadingZip, setDownloadingZip] = useState(false)
+
+    const getProxyUrl = (url) => {
+        if (!url || !url.startsWith('https://storage.googleapis.com')) return url
+        const API_URL = 'http://localhost:5000/api'
+        return `${API_URL} /projects/proxy - image ? url = ${encodeURIComponent(url)} `
+    }
+
     const downloadAllImages = async () => {
-        const zip = new JSZip()
-        const folder = zip.folder(`${project.brandName || 'instaGen'}-carousel`)
+        if (downloadingZip || !finalImages.length) return
+        setDownloadingZip(true)
+        console.log('📦 Starting ZIP generation for', finalImages.length, 'images')
 
-        const downloadPromises = finalImages.map(async (img, index) => {
-            const response = await fetch(img.url)
+        try {
+            const zip = new JSZip()
+            const brand = project.brandName || project.title || 'instagen'
+            const folderName = `${brand} -carousel`.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+            const folder = zip.folder(folderName)
+            const token = localStorage.getItem('token')
+
+            const downloadPromises = finalImages.map(async (img, index) => {
+                const rawUrl = typeof img === 'string' ? img : img.url
+                if (!rawUrl) return;
+
+                try {
+                    const proxyUrl = getProxyUrl(rawUrl)
+                    const response = await fetch(proxyUrl, {
+                        headers: token ? { 'Authorization': `Bearer ${token} ` } : {}
+                    })
+                    if (!response.ok) throw new Error(`HTTP ${response.status} `)
+                    const blob = await response.blob()
+                    folder.file(`slide - ${index + 1}.png`, blob)
+                    console.log(`✅ Added slide ${index + 1} to ZIP`)
+                } catch (err) {
+                    console.error(`❌ Failed slide ${index + 1}: `, err)
+                }
+            })
+
+            await Promise.all(downloadPromises)
+
+            const zipFiles = Object.keys(zip.files).length
+            if (zipFiles <= 1) { // 1 because folder itself is an entry
+                throw new Error('No images were successfully fetched to include in ZIP. Try individual downloads.')
+            }
+
+            const content = await zip.generateAsync({ type: 'blob' })
+            saveAs(content, `${folderName}.zip`)
+            console.log('🚀 ZIP Download Triggered')
+        } catch (err) {
+            console.error('ZIP generation failed:', err)
+            alert(`ZIP failed: ${err.message} `)
+        } finally {
+            setDownloadingZip(false)
+        }
+    }
+
+    const forceDownload = async (url, filename) => {
+        try {
+            const token = localStorage.getItem('token')
+            const proxyUrl = getProxyUrl(url)
+            const response = await fetch(proxyUrl, {
+                headers: token ? { 'Authorization': `Bearer ${token} ` } : {}
+            })
+            if (!response.ok) throw new Error(`HTTP ${response.status} `)
             const blob = await response.blob()
-            folder.file(`slide-${index + 1}.png`, blob)
-        })
-
-        await Promise.all(downloadPromises)
-        const content = await zip.generateAsync({ type: 'blob' })
-        saveAs(content, `${project.brandName || 'instaGen'}-carousel.zip`)
+            const blobUrl = window.URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = blobUrl
+            link.download = filename || 'instaGen-image.png'
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            window.URL.revokeObjectURL(blobUrl)
+        } catch (err) {
+            console.error('Download failed:', err)
+            window.open(url, '_blank')
+        }
     }
 
     if (loading) {
@@ -113,13 +178,17 @@ export default function ProjectSuccess() {
             </div>
 
             <div className="action-grid">
-                <button className="main-action-card" onClick={downloadAllImages}>
+                <button
+                    className={`main - action - card ${downloadingZip ? 'disabled' : ''} `}
+                    onClick={downloadAllImages}
+                    disabled={downloadingZip}
+                >
                     <div className="icon-wrapper download">
-                        <Download size={28} />
+                        {downloadingZip ? <Loader className="spin" size={28} /> : <Download size={28} />}
                     </div>
                     <div className="action-info">
-                        <h3>Download All (ZIP)</h3>
-                        <p>Get all high-res slides in one bundle</p>
+                        <h3>{downloadingZip ? 'Preparing Bundle...' : 'Download All (ZIP)'}</h3>
+                        <p>{downloadingZip ? 'Gathering high-res slides...' : 'Get all high-res slides in one bundle'}</p>
                     </div>
                 </button>
 
@@ -169,15 +238,15 @@ export default function ProjectSuccess() {
                         </div>
                         <div className="spec-item">
                             <span className="spec-label">Estimated Cost:</span>
-                            <code className="cost-value">${project.usage.estimatedCost?.toFixed(4) || '0.000'} USD</code>
+                            <code className="cost-value">{formatCurrency(project.usage.estimatedCost || 0)}</code>
                         </div>
                         <div className="spec-item">
                             <span className="spec-label">Input / Output:</span>
                             <code>{project.usage.inputTokens?.toLocaleString() || 0} / {project.usage.outputTokens?.toLocaleString() || 0}</code>
                         </div>
                         <div className="spec-item">
-                            <span className="spec-label">AI Model:</span>
-                            <code>Gemini 1.5 Flash</code>
+                            <span className="spec-label">AI Models Used:</span>
+                            <code>{localStorage.getItem('instaGen-textModel')?.replace('models/', '') || 'gemini'} <br /> {localStorage.getItem('instaGen-imageModel')?.replace('models/', '') || 'imagen'}</code>
                         </div>
                     </div>
                 </div>
@@ -192,14 +261,14 @@ export default function ProjectSuccess() {
 
                 <div className="visuals-grid-main">
                     {finalImages.map((img, idx) => (
-                        <div key={idx} className={`final-visual-card glass ${expandedHistory === idx ? 'expanded' : ''}`}>
+                        <div key={idx} className={`final - visual - card glass ${expandedHistory === idx ? 'expanded' : ''} `}>
                             <div className="visual-preview-container">
-                                <img src={img.url} alt={`Slide ${idx + 1}`} onClick={() => setLightboxImage(img.url)} />
+                                <img src={img.url} alt={`Slide ${idx + 1} `} onClick={() => setLightboxImage(img.url)} />
                                 <div className="slide-badge">Slide {idx + 1}</div>
 
                                 {img.generationHistory?.length > 0 && (
                                     <button
-                                        className={`history-toggle-btn ${expandedHistory === idx ? 'active' : ''}`}
+                                        className={`history - toggle - btn ${expandedHistory === idx ? 'active' : ''} `}
                                         onClick={() => setExpandedHistory(expandedHistory === idx ? null : idx)}
                                         title="View Version History"
                                     >
@@ -217,16 +286,30 @@ export default function ProjectSuccess() {
                                     <div className="history-strip-mini">
                                         {/* Current version as first item */}
                                         <div className="history-item-mini active">
-                                            <img src={img.url} alt="Current" />
+                                            <div className="history-thumb-wrapper">
+                                                <img src={img.url} alt="Current" onClick={() => setLightboxImage(img.url)} />
+                                                <button
+                                                    className="mini-history-download"
+                                                    onClick={(e) => { e.stopPropagation(); forceDownload(img.url, `slide - ${idx + 1} -latest.png`); }}
+                                                    title="Download current version"
+                                                >
+                                                    <Download size={12} />
+                                                </button>
+                                            </div>
                                             <span className="version-tag">Current</span>
                                         </div>
                                         {img.generationHistory.map((h, hIdx) => (
-                                            <div
-                                                key={hIdx}
-                                                className="history-item-mini"
-                                                onClick={() => setLightboxImage(h.url)}
-                                            >
-                                                <img src={h.url} alt={`v${hIdx}`} />
+                                            <div key={hIdx} className="history-item-mini">
+                                                <div className="history-thumb-wrapper">
+                                                    <img src={h.url} alt={`v${hIdx} `} onClick={() => setLightboxImage(h.url)} />
+                                                    <button
+                                                        className="mini-history-download"
+                                                        onClick={(e) => { e.stopPropagation(); forceDownload(h.url, `slide - ${idx + 1} -v${img.generationHistory.length - hIdx}.png`); }}
+                                                        title={`Download version ${img.generationHistory.length - hIdx} `}
+                                                    >
+                                                        <Download size={12} />
+                                                    </button>
+                                                </div>
                                                 <span className="version-tag">v{img.generationHistory.length - hIdx}</span>
                                             </div>
                                         ))}
@@ -242,15 +325,26 @@ export default function ProjectSuccess() {
             {/* Lightbox for History/Image Preview */}
             {lightboxImage && (
                 <div className="success-lightbox-overlay" onClick={() => setLightboxImage(null)}>
-                    <div className="success-lightbox-content animated-scale-in">
-                        <img src={lightboxImage} alt="Preview" />
+                    <div className="success-lightbox-content animated-scale-in" onClick={e => e.stopPropagation()}>
+                        <div className="lightbox-image-container">
+                            <img src={lightboxImage} alt="Preview" />
+                            <div className="lightbox-image-actions">
+                                <button
+                                    className="btn-primary lightbox-download-trigger"
+                                    onClick={() => forceDownload(lightboxImage, 'instaGen-download.png')}
+                                >
+                                    <Download size={20} />
+                                    <span>Download Original</span>
+                                </button>
+                            </div>
+                        </div>
                         <button className="close-lightbox" onClick={() => setLightboxImage(null)}>✕</button>
                     </div>
                 </div>
             )}
 
             {/* Detailed Project Breakdown Accordion */}
-            <div className={`detailed-breakdown ${showDetailedDetails ? 'open' : ''}`}>
+            <div className={`detailed - breakdown ${showDetailedDetails ? 'open' : ''} `}>
                 <button
                     className="details-toggle-btn glass"
                     onClick={() => setShowDetailedDetails(!showDetailedDetails)}
@@ -266,37 +360,37 @@ export default function ProjectSuccess() {
                     <div className="details-content glass">
                         <div className="details-tabs">
                             <button
-                                className={`tab-btn ${activeTab === 'input' ? 'active' : ''}`}
+                                className={`tab - btn ${activeTab === 'input' ? 'active' : ''} `}
                                 onClick={() => setActiveTab('input')}
                             >
                                 <LayoutGrid size={16} /> Input
                             </button>
                             <button
-                                className={`tab-btn ${activeTab === 'intent' ? 'active' : ''}`}
+                                className={`tab - btn ${activeTab === 'intent' ? 'active' : ''} `}
                                 onClick={() => setActiveTab('intent')}
                             >
                                 <BrainCircuit size={16} /> Intent
                             </button>
                             <button
-                                className={`tab-btn ${activeTab === 'content' ? 'active' : ''}`}
+                                className={`tab - btn ${activeTab === 'content' ? 'active' : ''} `}
                                 onClick={() => setActiveTab('content')}
                             >
                                 <FileText size={16} /> Content
                             </button>
                             <button
-                                className={`tab-btn ${activeTab === 'visuals' ? 'active' : ''}`}
+                                className={`tab - btn ${activeTab === 'visuals' ? 'active' : ''} `}
                                 onClick={() => setActiveTab('visuals')}
                             >
                                 <Palette size={16} /> Visuals
                             </button>
                             <button
-                                className={`tab-btn ${activeTab === 'storyboard' ? 'active' : ''}`}
+                                className={`tab - btn ${activeTab === 'storyboard' ? 'active' : ''} `}
                                 onClick={() => setActiveTab('storyboard')}
                             >
                                 <History size={16} /> Storyboard
                             </button>
                             <button
-                                className={`tab-btn ${activeTab === 'prompts' ? 'active' : ''}`}
+                                className={`tab - btn ${activeTab === 'prompts' ? 'active' : ''} `}
                                 onClick={() => setActiveTab('prompts')}
                             >
                                 <Sparkles size={16} /> Prompts
@@ -387,11 +481,11 @@ export default function ProjectSuccess() {
                                             <div className="slide-card-header">
                                                 <h4>Slide {idx + 1} ({slide.intent})</h4>
                                                 <button
-                                                    className={`copy-chip ${copiedId === `s${idx}` ? 'copied' : ''}`}
-                                                    onClick={() => handleCopy(`${slide.heading}\n${slide.subtext}`, `s${idx}`)}
+                                                    className={`copy - chip ${copiedId === `s${idx}` ? 'copied' : ''} `}
+                                                    onClick={() => handleCopy(`${slide.heading} \n${slide.subtext} `, `s${idx} `)}
                                                 >
-                                                    {copiedId === `s${idx}` ? <Check size={14} /> : <Copy size={14} />}
-                                                    {copiedId === `s${idx}` ? 'Copied' : 'Copy Text'}
+                                                    {copiedId === `s${idx} ` ? <Check size={14} /> : <Copy size={14} />}
+                                                    {copiedId === `s${idx} ` ? 'Copied' : 'Copy Text'}
                                                 </button>
                                             </div>
                                             <div className="slide-card-body">
@@ -460,6 +554,23 @@ export default function ProjectSuccess() {
 
                             {activeTab === 'storyboard' && (
                                 <div className="panel-content storyboard-panel">
+                                    {project.storyboardOverviewImage && (
+                                        <div className="detail-row" style={{ marginBottom: '1.5rem' }}>
+                                            <label>Storyboard Overview Preview:</label>
+                                            <div className="storyboard-overview-preview">
+                                                <img
+                                                    src={project.storyboardOverviewImage}
+                                                    alt="Storyboard Overview"
+                                                    style={{
+                                                        maxWidth: '100%',
+                                                        borderRadius: 'var(--radius-md)',
+                                                        border: '1px solid var(--glass-border)',
+                                                        boxShadow: 'var(--shadow-md)'
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="detail-row">
                                         <label>Global Storyboard Concept:</label>
                                         <div className="text-box">{project.storyboardPrompt || 'N/A'}</div>
@@ -474,11 +585,11 @@ export default function ProjectSuccess() {
                                             <div className="slide-card-header">
                                                 <h4>Slide {idx + 1} Prompt</h4>
                                                 <button
-                                                    className={`copy-chip ${copiedId === `p${idx}` ? 'copied' : ''}`}
-                                                    onClick={() => handleCopy(img.prompt, `p${idx}`)}
+                                                    className={`copy - chip ${copiedId === `p${idx}` ? 'copied' : ''} `}
+                                                    onClick={() => handleCopy(img.prompt, `p${idx} `)}
                                                 >
-                                                    {copiedId === `p${idx}` ? <Check size={14} /> : <Copy size={14} />}
-                                                    {copiedId === `p${idx}` ? 'Copied' : 'Copy Prompt'}
+                                                    {copiedId === `p${idx} ` ? <Check size={14} /> : <Copy size={14} />}
+                                                    {copiedId === `p${idx} ` ? 'Copied' : 'Copy Prompt'}
                                                 </button>
                                             </div>
                                             <div className="slide-card-body">

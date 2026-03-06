@@ -41,7 +41,11 @@ export const storageService = {
             return `https://storage.googleapis.com/${bucket.name}/${fileName}`;
 
         } catch (error) {
-            console.error('❌ Upload to Cloud Storage failed:', error);
+            if (error.code === 404) {
+                console.error('❌ Firebase Bucket Not Found. Please create your storage bucket at console.firebase.google.com');
+                throw new Error('Firebase bucket not found. Ensure Cloud Storage is enabled in the Firebase console.');
+            }
+            console.error('❌ Upload to Cloud Storage failed:', error.message || error);
             throw error;
         }
     },

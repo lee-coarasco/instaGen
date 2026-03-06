@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Palette, Check, RefreshCw, Eye, ArrowLeft, Type, Maximize } from 'lucide-react'
 import { visualPlanner } from '@services/visual/visualPlanner'
 import { useProject } from '@contexts/ProjectContext'
@@ -34,6 +34,13 @@ export default function VisualPreview({ onNext, onBack }) {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
     const [visualPlan, setVisualPlan] = useState(project.visualPlan || null)
+
+    // Sync local state if project visualPlan is cleared/updated externally
+    useEffect(() => {
+        if (project.visualPlan !== visualPlan) {
+            setVisualPlan(project.visualPlan);
+        }
+    }, [project.visualPlan, visualPlan]);
 
     const createVisualPlan = async () => {
         setLoading(true)

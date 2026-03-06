@@ -6,9 +6,14 @@
 
 .gallery-header {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: var(--space-xl);
     align-items: center;
     margin-bottom: var(--space-3xl);
+}
+
+.header-info {
+    text-align: center;
 }
 
 .gallery-header h1 {
@@ -24,37 +29,129 @@
     color: var(--color-text-secondary);
 }
 
-.search-box {
-    position: relative;
-    max-width: 500px;
+.header-actions {
     width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: var(--space-md);
 }
 
-.search-box input {
+.search-box-container {
+    position: relative;
+    max-width: 580px;
     width: 100%;
-    padding: var(--space-md) var(--space-xl);
-    padding-left: 3.5rem;
-    background: var(--glass-background);
+    display: flex;
+    align-items: center;
+}
+
+.gallery-search-input {
+    width: 100%;
+    padding: 1rem 3rem 1rem 3.5rem !important;
+    background: var(--glass-bg);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-full);
-    color: var(--color-text);
+    color: var(--color-text-primary);
     font-size: 1rem;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-sm);
 }
 
-.search-icon {
+.search-icon-fixed {
     position: absolute;
-    left: var(--space-xl);
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--color-text-dim);
-    pointer-events: none;
+    left: 1.25rem;
+    color: var(--color-primary);
+    filter: drop-shadow(0 0 5px rgba(124, 58, 237, 0.3));
+    z-index: 2;
 }
 
-.search-box input:focus {
+.clear-search {
+    position: absolute;
+    right: 1.25rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: var(--color-text-dim);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.clear-search:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.gallery-search-input:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.15);
+}
+
+.gallery-loading-more {
+    margin: 4rem 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    color: var(--color-text-dim);
+    font-weight: 500;
+}
+
+.back-to-top {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    background: var(--gradient-primary);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    z-index: 100;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: slideUp 0.3s ease-out;
+}
+
+.back-to-top:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(124, 58, 237, 0.4);
+}
+
+.project-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.project-title-mini {
+    flex: 1;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-primary-light);
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.slide-tag {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: white;
+    background: rgba(124, 58, 237, 0.2);
+    padding: 1px 6px;
+    border-radius: 4px;
 }
 
 .gallery-grid {
@@ -110,6 +207,28 @@
     opacity: 1;
 }
 
+.icon-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--glass-border);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
+}
+
+.icon-btn:hover {
+    background: var(--color-primary);
+    color: white;
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(124, 58, 237, 0.4);
+}
+
 .image-info {
     padding: var(--space-lg);
     background: rgba(0, 0, 0, 0.2);
@@ -153,6 +272,7 @@
     line-height: 1.5;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     margin: 0;
@@ -177,31 +297,52 @@
 .lightbox-content {
     background: var(--color-surface);
     border-radius: var(--radius-2xl);
-    max-width: 1300px;
-    width: 95%;
-    height: 85vh;
+    width: 1100px;
+    max-width: 94vw;
+    height: 75vh;
+    max-height: 800px;
     display: flex;
     position: relative;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 40px 80px -15px rgba(0, 0, 0, 0.7);
+    overflow: hidden;
+    animation: modalSlideUp 0.35s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
 .lightbox-content img {
-    flex: 1.5;
-    width: 60%;
+    width: 55%;
+    height: 100%;
     object-fit: contain;
-    background: #0a0a0a;
+    background: #000;
     border-right: 1px solid var(--glass-border);
 }
 
 .lightbox-details {
-    flex: 1;
-    width: 40%;
+    width: 45%;
+    height: 100%;
     padding: var(--space-2xl);
     display: flex;
     flex-direction: column;
-    gap: var(--space-lg);
+    gap: var(--space-xl);
     overflow-y: auto;
     background: var(--color-surface);
+}
+
+/* Custom scrollbar for lightbox details */
+.lightbox-details::-webkit-scrollbar {
+    width: 6px;
+}
+
+.lightbox-details::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.lightbox-details::-webkit-scrollbar-thumb {
+    background: var(--glass-border);
+    border-radius: 10px;
+}
+
+.lightbox-details::-webkit-scrollbar-thumb:hover {
+    background: var(--color-primary-dim);
 }
 
 .lightbox-details h3 {
@@ -248,7 +389,41 @@
 
 .lightbox-actions {
     margin-top: auto;
-    padding-top: var(--space-lg);
+    padding-top: var(--space-xl);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    width: 100%;
+}
+
+.lightbox-actions .btn-primary,
+.lightbox-actions .btn-secondary {
+    width: 100%;
+    height: 50px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+    margin: 0;
+}
+
+.lightbox-actions .btn-primary {
+    background: var(--gradient-primary);
+    box-shadow: var(--shadow-md);
+}
+
+.lightbox-actions .btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: var(--color-text-primary);
+}
+
+.lightbox-actions .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--color-primary-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
 }
 
 .close-btn {
@@ -266,24 +441,57 @@
     z-index: 10;
 }
 
-.gallery-loading {
-    height: 60vh;
+.gallery-loading-full {
+    height: 70vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: var(--space-md);
-    color: var(--color-text-secondary);
+    gap: var(--space-xl);
+    text-align: center;
+    animation: fadeIn 0.4s ease-out;
 }
 
-.empty-gallery {
+.gallery-loading-full .spin {
+    color: var(--color-primary);
+    filter: drop-shadow(0 0 10px rgba(124, 58, 237, 0.4));
+}
+
+.gallery-loading-full h2 {
+    margin-bottom: var(--space-xs);
+    font-size: 2rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.gallery-loading-full p {
+    color: var(--color-text-dim);
+    font-size: 1.1rem;
+}
+
+.gallery-empty {
     padding: var(--space-4xl);
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--space-md);
+    background: var(--glass-background);
     border-radius: var(--radius-2xl);
+    border: 1px solid var(--glass-border);
+    margin: var(--space-4xl) 0;
+}
+
+.gallery-empty h3 {
+    font-size: 1.5rem;
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-xs);
+}
+
+.gallery-empty p {
+    color: var(--color-text-dim);
 }
 
 @media (max-width: 768px) {

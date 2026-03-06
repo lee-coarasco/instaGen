@@ -13,7 +13,9 @@ import {
     Calendar,
     Trash2,
     Search,
-    Loader
+    Loader,
+    Download,
+    Eye
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './DashboardPage.css';
@@ -27,6 +29,7 @@ export default function DashboardPage() {
         updateProject,
         fetchProjects,
         fetchStats,
+        getResumeSlug,
         isInitialLoad,
         setIsInitialLoad,
         invalidateCache
@@ -107,19 +110,7 @@ export default function DashboardPage() {
             slides: project.stages?.content?.slides || project.slides || []
         });
 
-        let targetSlug = 'input';
-        if (project.status === 'completed' || project.stages?.finalImages?.length > 0) {
-            targetSlug = 'complete';
-        } else if (project.stages?.visualPlan) {
-            targetSlug = 'generate';
-        } else if (project.stages?.content) {
-            targetSlug = 'visuals';
-        } else if (project.stages?.intent) {
-            targetSlug = 'content';
-        } else if (project.userIdea) {
-            targetSlug = 'intent';
-        }
-
+        const targetSlug = getResumeSlug(project);
         const projectId = project._id || project.id;
         navigate(`/create/${targetSlug}${projectId ? `/${projectId}` : ''}`);
     };
@@ -220,6 +211,27 @@ export default function DashboardPage() {
                                     <div className="work-item glass" onClick={() => handleContinueProject(projects.find(p => p._id === img.projectId))}>
                                         <div className="work-preview">
                                             <img src={img.url} alt={`Latest ${idx}`} />
+                                            <div className="work-overlay">
+                                                <a
+                                                    href={img.url}
+                                                    download={`latest-work-${idx}.png`}
+                                                    className="icon-btn"
+                                                    title="Download Image"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <Download size={16} />
+                                                </a>
+                                                <button
+                                                    className="icon-btn"
+                                                    title="View/Continue Project"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleContinueProject(projects.find(p => p._id === img.projectId));
+                                                    }}
+                                                >
+                                                    <Eye size={16} />
+                                                </button>
+                                            </div>
                                         </div>
                                         <div className="work-info">
                                             <div className="work-info-header">

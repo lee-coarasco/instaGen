@@ -20,6 +20,7 @@ function InputForm({ onNext }) {
         brandName: project.brandName || '',
         brandingPlacement: project.brandingPlacement || 'top-right',
         title: project.title || '',
+        contentDensity: project.contentDensity || 'balanced',
     })
     const [isDragging, setIsDragging] = useState(false)
 
@@ -64,9 +65,12 @@ function InputForm({ onNext }) {
     const handleSubmit = (e) => {
         e.preventDefault()
 
-        // Update project with form data
-        // Update project with form data
-        updateProject({
+        const hasIdeaChanged = formData.userIdea !== project.userIdea ||
+            formData.niche !== project.niche ||
+            formData.postType !== project.postType;
+
+        // Prepare the updates object
+        const updates = {
             postType: formData.postType,
             niche: formData.niche,
             visualStyle: formData.visualStyle,
@@ -78,19 +82,31 @@ function InputForm({ onNext }) {
             title: formData.title,
             brandName: formData.brandName,
             brandingPlacement: formData.brandingPlacement,
-        })
+            contentDensity: formData.contentDensity,
+        }
+
+        // If core idea changed, clear stale AI results to force fresh refinement
+        if (hasIdeaChanged) {
+            updates.intent = null;
+            updates.content = null;
+            updates.visualPlan = null;
+            updates.storyboardPrompt = null;
+            updates.finalImages = [];
+        }
 
         // If Auto method, clear any existing slides to let AI generate them from intent
         if (formData.slideCountMethod === 'auto') {
-            updateProject({ slides: [] });
+            updates.slides = [];
         }
 
         // Initialize slides for carousel ONLY if they don't exist and user chose MANUAL count
         if (formData.postType === POST_TYPES.CAROUSEL &&
             formData.slideCountMethod === 'manual' &&
-            (!project.slides || project.slides.length === 0)) {
+            (!project.slides || project.slides.length === 0 || hasIdeaChanged)) {
+
+            const newSlides = [];
             for (let i = 0; i < formData.slideCount; i++) {
-                addSlide({
+                newSlides.push({
                     id: `slide-${i}`,
                     heading: '',
                     subtext: '',
@@ -98,10 +114,13 @@ function InputForm({ onNext }) {
                     intent: i === 0 ? 'hook' : 'explain',
                 })
             }
+            updates.slides = newSlides;
         }
 
-        // Move to next step
-        onNext()
+        updateProject(updates)
+
+        // Pass updates to onNext (handleNext) to bypass async context race condition
+        onNext(updates)
     }
 
     return (
@@ -224,6 +243,37 @@ function InputForm({ onNext }) {
                     />
                 </div>
 
+                {/* Content Density Level */}
+                <div className="form-section">
+                    <label className="form-label">Content Detail Level</label>
+                    <div className="density-selector glass">
+                        <button
+                            type="button"
+                            className={`density-btn ${formData.contentDensity === 'minimal' ? 'active' : ''}`}
+                            onClick={() => setFormData({ ...formData, contentDensity: 'minimal' })}
+                        >
+                            <span className="density-name">Minimal</span>
+                            <span className="density-desc">Short, punchy headers & one-liners. Best for hooks.</span>
+                        </button>
+                        <button
+                            type="button"
+                            className={`density-btn ${formData.contentDensity === 'balanced' ? 'active' : ''}`}
+                            onClick={() => setFormData({ ...formData, contentDensity: 'balanced' })}
+                        >
+                            <span className="density-name">Balanced</span>
+                            <span className="density-desc">Standard details with 1-2 medium sentences.</span>
+                        </button>
+                        <button
+                            type="button"
+                            className={`density-btn ${formData.contentDensity === 'detailed' ? 'active' : ''}`}
+                            onClick={() => setFormData({ ...formData, contentDensity: 'detailed' })}
+                        >
+                            <span className="density-name">Detailed</span>
+                            <span className="density-desc">Deeper insights with 2-3 detailed sentences per slide.</span>
+                        </button>
+                    </div>
+                </div>
+
                 {/* User Idea */}
                 <div className="form-section highlight">
                     <label className="form-label" htmlFor="userIdea">
@@ -274,20 +324,22 @@ function InputForm({ onNext }) {
                                     onChange={(e) => setFormData({ ...formData, brandName: e.target.value })}
                                 />
                             </div>
-                            <div className="form-field" style={{ marginTop: 'var(--space-md)' }}>
-                                <label className="form-sub-label" htmlFor="brandingPlacement">Placement</label>
-                                <select
-                                    id="brandingPlacement"
-                                    className="form-select"
-                                    value={formData.brandingPlacement}
-                                    onChange={(e) => setFormData({ ...formData, brandingPlacement: e.target.value })}
-                                >
-                                    <option value="top-left">Top Left</option>
-                                    <option value="top-right">Top Right</option>
-                                    <option value="bottom-left">Bottom Left</option>
-                                    <option value="bottom-right">Bottom Right</option>
-                                </select>
-                            </div>
+                            {formData.brandName && (
+                                <div className="form-field animated-fade" style={{ marginTop: 'var(--space-md)' }}>
+                                    <label className="form-sub-label" htmlFor="brandingPlacement">Placement</label>
+                                    <select
+                                        id="brandingPlacement"
+                                        className="form-select"
+                                        value={formData.brandingPlacement}
+                                        onChange={(e) => setFormData({ ...formData, brandingPlacement: e.target.value })}
+                                    >
+                                        <option value="top-left">Top Left</option>
+                                        <option value="top-right">Top Right</option>
+                                        <option value="bottom-left">Bottom Left</option>
+                                        <option value="bottom-right">Bottom Right</option>
+                                    </select>
+                                </div>
+                            )}
                         </div>
                     </div>
 
